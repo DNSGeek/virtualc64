@@ -199,7 +199,6 @@ C64Memory::loadKernelRom(const char *filename)
 		kernelRomFile = strdup(filename);
 		flashRom(filename, 0xE000);
         memcpy(unpatchedKernel, &rom[0xE000], 0x2000);
-        // patchKernel();
 		return true;
 	}
     

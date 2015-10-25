@@ -36,8 +36,9 @@ VC1541::VC1541()
     // Register snapshot items
     SnapshotItem items[] = {
 
-        // Configuration items
+        // Configuration items (will survive reset)
         { &bitAccuracy,             sizeof(bitAccuracy),            KEEP_ON_RESET },
+        { &fastLoader,              sizeof(fastLoader),             KEEP_ON_RESET },
         { &sendSoundMessages,       sizeof(sendSoundMessages),      KEEP_ON_RESET },
         
         // Internal state
@@ -60,6 +61,8 @@ VC1541::VC1541()
     registerSnapshotItems(items, sizeof(items));
     
     sendSoundMessages = true;
+    fastLoader = false;
+    fastLoaderArchive = NULL;
     resetDisk();
 }
 
@@ -81,7 +84,7 @@ VC1541::reset()
     
     cpu->mem = mem;
     cpu->setPC(0xEAA0);
-    halftrack = 41;
+    halftrack = 41;    
 }
 
 void
@@ -357,8 +360,6 @@ VC1541::insertDisk(Archive *a)
     warn("Can only mount D64 images.\n");
 }
 
-
-
 void 
 VC1541::ejectDisk()
 {
@@ -401,45 +402,6 @@ VC1541::exportToD64(const char *filename)
     return true;
 }
 
-
-//
-// First implementation of fastLoaderRead() and fastLoaderSync()
-// The implementation mimics Frodo. It is a little bit more complicated, because we store real SYNC marks on disk
-// while Frodo is using a single 0xFF byte.
-//
-
-#if 0
-void
-VC1541::fastLoaderRead()
-{
-    uint8_t byteUnderHead = readByteFromHead();
-    byteReady(byteUnderHead);
-    rotateDiskByOneByte();
-}
-
-bool
-VC1541::getFastLoaderSync()
-{
-    uint8_t byteUnderHead = readByteFromHead();
-    
-    if (byteUnderHead == 0xFF) {
-        // Move head to last 0xFF byte
-        do { rotateDiskByOneByte(); } while (readByteFromHead() == 0xFF);
-        rotateBackByOneByte();
-        return true;
-    } else {
-        // Proceed to the next byte
-        rotateDiskByOneByte();
-        return false;
-    }
-}
-#endif
-
-
-//
-// Second implementation. We try to do a bit better ...
-//
-
 void
 VC1541::fastLoaderRead()
 {
@@ -461,46 +423,42 @@ VC1541::getFastLoaderSync()
     return byteUnderHead == 0xFF;
 }
 
-#if 0
+// ---------------------------------------------------------------------------------------------
+//                                    Frodo-style fast loader
+// ---------------------------------------------------------------------------------------------
 
-// THE CODE BELOW SEEMS TO WORK
-uint8_t
-VC1541::fastLoaderRead()
+void
+VC1541::enableFastLoader()
 {
-    uint8_t byteUnderHead = readByteFromHead();
+    assert(fastLoader == false);
+    debug(2, "Enabling fast loader");
+
+    fastLoader = true;
+    c64->mem->patchKernel();
     
-    // printf("(%02X %04X) ", byteUnderHead, c64->floppy->cpu->getPC_at_cycle_0());
-    
-    byteReady(byteUnderHead);
-    
-    if (byteUnderHead == 0xFF) {
-        // If we're inside a SYNC mark, proceed to next data byte
-        fastLoaderSkipSyncMark();
-    } else {
-        rotateDiskByOneByte();
+    // Copy current disk contents to archive as the archive will be the new data source
+    if (diskInserted) {
+        assert(fastLoaderArchive == NULL);
+        if ((fastLoaderArchive = D64Archive::archiveFromDrive(this)) == NULL) {
+            warn("Cannot enable fast loader because archive encoding has failed.");
+        }
     }
-    
-    return byteUnderHead;
 }
 
-
-bool
-VC1541::getFastLoaderSync()
+void
+VC1541::disableFastLoader()
 {
-    bool result;
-    uint8_t byteUnderHead = readByteFromHead();
-
-    // printf("[%02X %04X] ", byteUnderHead, c64->floppy->cpu->getPC_at_cycle_0());
-
-    if (byteUnderHead == 0xFF) {
-        result = true;
-        rotateDiskByOneByte();
-    } else {
-        result = false;
-        rotateDiskByOneByte();
+    assert(fastLoader == true);
+    debug(2, "Disabling fast loader");
+    
+    fastLoader = false;
+    c64->mem->unpatchKernel();
+    
+    // Write current archive contents to disk as the disk will be the new data source
+    if (diskInserted) {
+        assert(fastLoaderArchive != NULL);
+        ejectDisk();
+        disk.encodeArchive(fastLoaderArchive);
+        fastLoaderArchive = NULL;
     }
-
-    return result;
 }
-#endif
-

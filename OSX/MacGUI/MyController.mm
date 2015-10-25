@@ -488,6 +488,9 @@
 				[self mountCartridge];
 			}				
 
+            // Enable fast loader (remove after debugging)
+            [c64 c64]->floppy->enableFastLoader();
+
 			// Start emulator
 			[c64 run];
             [metalScreen blendIn];

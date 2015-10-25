@@ -19,11 +19,31 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-//! @unsorted
-
-// TODO:
-// Stress test: Change disk encoder to produce unaligned sync sequences
-
+// Idea for Frodo-style fastLoader:
+// Add D64Archive *archive;
+// bool fastLoader = false;
+//
+// enableFastLoader()
+// Convert current disk to archive
+// Patch kernel
+//
+// disableFastLoader()
+// Convert archive to disk
+// Unpatch kernel
+//
+// insertDisk(Archive *a)
+// archive = a + standard bevahior
+//
+// ejectDisk()
+// archive = 0
+//
+// Idea: If fast loading is enabled, use archive directly
+// If fast loading is disabled, disk data is used
+// When fast loading is switched on/off, copy data from disk to archive or vice versa
+//
+// Next steps: Add Archive *archive
+// Add enableFastLoader, disableFastLoader
+// Remove old fastloader
 
 #ifndef _VC1541_INC
 #define _VC1541_INC
@@ -77,15 +97,6 @@ public:
     //! Dump current configuration into message queue
     void ping();
     
-    //! Size of internal state
-    // uint32_t stateSize();
-    
-    //! Load state
-    // void loadFromBuffer(uint8_t **buffer);
-    
-    //! Save state
-    // void saveToBuffer(uint8_t **buffer);
-    
     //! Dump current state into logfile
     void dumpState();
 
@@ -129,12 +140,19 @@ public:
     inline void setSendSoundMessages(bool b) { sendSoundMessages = b; }
 
     /*! @brief Returns true if drive is emulated bit accurately
+     *  @deprecated
      */
     inline bool getBitAccuracy() { return bitAccuracy; }
 
     /*! @brief Enables or disables bit accurate drive emulation
+     *  @deprecated
      */
     inline void setBitAccuracy(bool b) { bitAccuracy = b; if (!b) alignHead(); }
+
+    /*! @brief Returns the fast loader archive
+     */
+    inline Archive *getFastLoaderArchive() { return fastLoaderArchive; }
+
 
     //
     //! @functiongroup Accessing drive properties
@@ -257,9 +275,25 @@ private:
      *  @discussion Bit level simulation is the standard emulation mode. If it is disabled, the 
      *              emulator uses a fast load mechanism to make disk data available whenever the 
      *              VC1541 DOS waits for it. Right now, this is an experimental feature. Note, that
-     *              writing to disk is only works when bit level emulation is enabled. */
+     *              writing to disk is only works when bit level emulation is enabled. 
+     *  @deprecated Will be replaced by Frodo-style fast loader */
     bool bitAccuracy;
 
+    /*! @brief      Indicates whether VC1541 is simulated accurately or mimiced by a fast loader
+     *  @discussion VirtualC64 utilizes a Frodo-style fast-loading mechanism. When fast loading is
+     *              enabled, the kernel ROM is patched by adding some trap mnemonics. Once such 
+     *              a mnemonic is encoutere, special-purpose functions of the IEC bus are invoked. 
+     *              These functions get the information directly from the attached archive instead 
+     *              of the real disk, thus achieving a much higher simulation speed. 
+     * @seealso     fastLoadArchive */
+    bool fastLoader;
+    
+    /*! @brief      The information source when fast loading is enabled.
+     *  @discussion When fast loading is enabled, the current disk contents in converted to this 
+     *              archive which will then be used as the data source. When fast loading is disabled,
+     *              the archive gets GCR encoded and written back to the real disk. */
+    D64Archive *fastLoaderArchive;
+    
     //! Indicates whether the VC1541 shall provide sound notification messages to the GUI
     bool sendSoundMessages;
 
@@ -387,16 +421,37 @@ public:
 
     /*! @brief Performs read access of the fast loader
      *  @abstract This method is used to latch in a byte from disk when bit accurate emulation is disabled
+     *  @deprecated
      */
     void fastLoaderRead();
  
     /*! @brief Fast loader sync detection
      *  @abstract Returns true when the drive head is currently inside a SYNC mark     
+     *  @deprecated
      */
     bool getFastLoaderSync();
     
-    /*! @brief  Skip sync mark (for d */
+    /*! @brief  Skip sync mark
+     *  @deprecated
+     */
     inline void fastLoaderSkipSyncMark() { while (readByteFromHead() == 0xFF) rotateDiskByOneByte(); }
+
+
+    // ---------------------------------------------------------------------------------------------
+    //                                    Frodo-style fast loader
+    // ---------------------------------------------------------------------------------------------
+
+    /*! @brief Enables the fast loader
+     */
+    void enableFastLoader();
+
+    /*! @brief Disables the fast loader
+     */
+    void disableFastLoader();
+
+    
+private:
+    
 };
 
 #endif
