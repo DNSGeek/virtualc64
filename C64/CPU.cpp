@@ -20,8 +20,8 @@
 
 CPU::CPU()
 {	
-	name = "CPU";
-	debug(2, "  Creating CPU at address %p...\n", this);
+	setDescription("CPU");
+	debug(3, "  Creating CPU at address %p...\n", this);
 	
     // Chip model
     chipModel = MOS6510;
@@ -83,7 +83,7 @@ CPU::CPU()
 
 CPU::~CPU()
 {
-	debug(2, "  Releasing CPU...\n");
+	debug(3, "  Releasing CPU...\n");
 }
 
 void
@@ -91,6 +91,7 @@ CPU::reset()
 {
     VirtualComponent::reset();
     
+    B = 1; 
 	external_port_bits = 0x1F;
 	rdyLine = true;
 	next = &CPU::fetch;
@@ -168,12 +169,17 @@ CPU::setPort(uint8_t value)
 	// Store value of Bit 7, Bit 6 and Bit 3 if the corresponding bit lines are configured as outputs
 	uint8_t mask = 0xC8 & port_direction;	
 	external_port_bits &= ~mask;
-	external_port_bits |= mask & port;	
+	external_port_bits |= mask & port;
+    
+    // Datasette
+    if (port_direction & 0x20) {
+        c64->datasette.setMotor((value & 0x20) == 0);
+    }
 }
 
-void 
-CPU::setIRQLine(uint8_t bit) 
-{ 
+void
+CPU::setIRQLine(uint8_t bit)
+{
 	assert(bit != 0);
     
 	if (irqLine == 0) {

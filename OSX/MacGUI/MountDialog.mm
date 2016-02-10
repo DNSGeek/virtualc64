@@ -28,75 +28,80 @@
 @synthesize doMount;
 @synthesize doFlash;
 @synthesize doType;
-@synthesize doEjectOnCancel;
 
-- (void) _initialize:(Archive *)a c64proxy:(C64Proxy *)proxy
+- (void) _initialize:(ArchiveProxy *)aproxy c64proxy:(C64Proxy *)proxy
 {
-    assert(a != NULL);
+    assert(aproxy != NULL);
     assert(proxy != NULL);
     
-    archive = a;
+    archive = [aproxy archive];
     c64 = proxy;
     
+    bool isG64orNIB = ([aproxy getType] == G64_CONTAINER || [aproxy getType] == NIB_CONTAINER);
+    doMount = YES;
     doFlash = NO;
     doType = NO;
-    
+    loadOption = LOAD_OPTION_8_1;
+
     // Let the table header show the logical archive name
-    NSString *archiveName = [NSString stringWithFormat:@"%s", archive->getName()];
-    [[[directory tableColumnWithIdentifier:@"filename"] headerCell] setStringValue:archiveName];
+    [[[directory tableColumnWithIdentifier:@"filename"] headerCell] setStringValue:[aproxy getName]];
     
     // Establish necessary binding
     [directory deselectAll:self];
     [directory setTarget:self];
     [directory setDelegate:self];
     [directory setDataSource:self];
-    [directory setAction:@selector(singleClickAction:)];
-    [directory setDoubleAction:@selector(doubleClickAction:)];
-    [directory reloadData];
+    if (!isG64orNIB) {
+        [directory setAction:@selector(singleClickAction:)];
+        [directory setDoubleAction:@selector(doubleClickAction:)];
+        // Select first entry
+        NSIndexSet *indexSet = [NSIndexSet indexSetWithIndex:0];
+        [directory selectRowIndexes:indexSet byExtendingSelection:NO];
+    }
     
-    // Select first entry
-    NSIndexSet *indexSet = [NSIndexSet indexSetWithIndex:0];
-    [directory selectRowIndexes:indexSet byExtendingSelection:NO];
+    [doubleClickText setHidden:isG64orNIB];
+    [loadOptions setHidden:isG64orNIB];
+    [directory reloadData];
 }
 
-- (void) initializeAsMountDialog:(Archive *)a c64proxy:(C64Proxy *)proxy
+- (void) initialize:(ArchiveProxy *)aproxy c64proxy:(C64Proxy *)proxy
 {
-    [self _initialize:a c64proxy:proxy];
+    NSLog(@"Initialize MountDialog");
     
-    [headerText setStringValue:@"Archive"];
-    doMount = YES;
-    doEjectOnCancel = NO;
+    [self _initialize:aproxy c64proxy:proxy];
     
     // Get physical path of archive
-    NSString *archivePath = [NSString stringWithFormat:@"%s", archive->getPath()];
+    NSString *archivePath = [aproxy getPath];
     NSString *archiveLastPath = [archivePath lastPathComponent];
     NSString *archiveExtension = [[archiveLastPath pathExtension] uppercaseString];
     
     // Set icon and title
-    [diskIconFrame setTitle:archiveLastPath];
+    [headerText setStringValue:archivePath];
+    
     if ([archiveExtension isEqualToString:@"D64"]) {
         
         [diskIcon setImage:[NSImage imageNamed:@"IconD64"]];
+        [diskIconFrame setTitle:@"D64 archive"];
         loadOption = LOAD_OPTION_8_1;
         
     } else if ([archiveExtension isEqualToString:@"T64"]) {
         
         [diskIcon setImage:[NSImage imageNamed:@"IconT64"]];
+        [diskIconFrame setTitle:@"T64 archive"];
         loadOption = LOAD_OPTION_FLASH;
         
     } else if ([archiveExtension isEqualToString:@"PRG"]) {
         
         [diskIcon setImage:[NSImage imageNamed:@"IconPRG"]];
+        [diskIconFrame setTitle:@"PRG archive"];
         loadOption = LOAD_OPTION_FLASH;
 
     } else if ([archiveExtension isEqualToString:@"P00"]) {
         
         [diskIcon setImage:[NSImage imageNamed:@"IconP00"]];
+        [diskIconFrame setTitle:@"P00 archive"];
         loadOption = LOAD_OPTION_FLASH;
     }
-    
-    [CancelButton setTitle:@"Cancel"];
-    [OKButton setTitle:@"Insert disk"];
     
     [self update];
 }
@@ -153,7 +158,7 @@
     [[loadOptions itemAtIndex:1] setTitle:[NSString stringWithFormat:@"LOAD \"%@\",8",[self selectedFilename]]];
     [loadOptions selectItemAtIndex:loadOption];
     
-    [warningText setHidden:loadOption != LOAD_OPTION_FLASH];
+    [warningText setHidden:loadOption != LOAD_OPTION_FLASH || archive->getType() == G64_CONTAINER];
 }
 
 #pragma mark NSTableViewDataSource
@@ -169,7 +174,6 @@
 - (id)tableView:(NSTableView *)aTableView objectValueForTableColumn:(NSTableColumn *)aTableColumn row:(int)row
 {
 	if ([[aTableColumn identifier] isEqual:@"filename"]) {
-      //  return [NSString stringWithFormat:@"%s", archive->getNameOfItem(row)];
         const char *itemName = archive->getNameOfItem(row);
         assert(itemName != NULL);
 
@@ -179,11 +183,15 @@
             uName[i] = pet2unicode(itemName[i]);
         
         NSString *unicodename = [NSString stringWithCharacters:uName length:17];
-        NSLog(@"%@", unicodename);
+        // NSLog(@"%@", unicodename);
         return unicodename;
     }
 	if ([[aTableColumn identifier] isEqual:@"filesize"]) {
-		return @((int)archive->getSizeOfItemInBlocks(row));
+        if (archive->getType() == G64_CONTAINER) {
+            return @((int)archive->getSizeOfItem(row));
+        } else {
+            return @((int)archive->getSizeOfItemInBlocks(row));
+        }
 	}
 	if ([[aTableColumn identifier] isEqual:@"filetype"]) {
 		return [NSString stringWithFormat:@"%s", archive->getTypeOfItem(row)];
@@ -204,12 +212,20 @@
 {
     NSTextFieldCell *cell = [tableColumn dataCell];
 
-    if(strcmp(archive->getTypeOfItem(row), "PRG")) {
-        [cell setTextColor:[NSColor grayColor]];
+    if (archive->getType() == G64_CONTAINER) {
+        if (archive->getSizeOfItem(row) == 0) {
+            [cell setTextColor:[NSColor grayColor]];
+        } else {
+            [cell setTextColor:[NSColor blackColor]];
+        }
     } else {
-        [cell setTextColor:[NSColor blackColor]];
+        if(strcmp(archive->getTypeOfItem(row), "PRG")) {
+            [cell setTextColor:[NSColor grayColor]];
+        } else {
+            [cell setTextColor:[NSColor blackColor]];
+        }
     }
-                                               
+    
     return cell;
 }
 

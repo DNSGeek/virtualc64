@@ -1,5 +1,6 @@
 /*
- * (C) 2009 - 2015 Benjamin Klein, Dirk Hoffmann. All rights reserved.
+ * Original implementation by Benjamin Klein
+ * Rewritten and maintained by Dirk W. Hoffmann. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,15 +21,9 @@
 #import <IOKit/hid/IOHIDLib.h>
 #import <IOKit/hid/IOHIDManager.h>
 
-// TO BE REMOVED
-#import <set>
-
 #import "Joystick.h"
 
 @class C64Proxy;
-
-// TO BE REMOVED
-using std::set;
 
 typedef struct {
     JoystickManager *manager;
@@ -36,44 +31,106 @@ typedef struct {
     IOHIDDeviceRef deviceRef;
 } CallbackContext;
 
-class JoystickManagerProxy
+
+class USBJoystick
 {
-    private:
+
+public:
     
-    Joystick *_joystick;
-    set<int> _pressedButtons; // Can't we get rid of the SDL library?
+    //! @brief    Indicates if this object represents a plugged in USB joystick device
+    bool pluggedIn;
+    
+    //! @brief    Location ID of the represented USB joystick
+    int locationID;
+    
+    //! @brief    Mapping to one of the two virtual joysticks of the emulator
+    /*! @details  Initially, this pointer is NULL, meaning that the USB joystick has not yet been selected
+     *            as input device. It can be selected as input device via bindJoystick(). In that case, it
+     *            will point to one of the two static Joystick objects hold by the emulator.
+     */
+    JoystickProxy *joystick;
 
-    public:
+    USBJoystick()
+    {
+        pluggedIn = false;
+        locationID = 0;
+        joystick = NULL;
+    }
+    
+    //! @deprecated
+    void bindJoystick(JoystickProxy *joy) { joystick = joy; }
 
-    JoystickManagerProxy();
-		
-	void ChangeButton(int index, bool pressed);
-	void ChangeAxisX(JoystickAxisState state) const;
-	void ChangeAxisY(JoystickAxisState state) const;
-	
-    // Bind virtual joystick of the emulator
-    // 'Joystick' must be one of the two objects initialized by the emulator
-    // It can be either the object representing port 1 or the object representing port 2
-    void bindJoystick(Joystick *joy);
+    //! @brief Connects the USB device to port A of the emulator
+    void bindJoystickToPortA(C64Proxy *c64) { if (pluggedIn) joystick = [c64 joystickA]; }
+    void bindJoystickToPortB(C64Proxy *c64) { if (pluggedIn) joystick = [c64 joystickB]; }
+    void unbindJoystick() { joystick = nil; }
+    
+
+    //! @brief Connects the USB device to port A of the emulator
+
+        void bindJoystickToPortB(int nr);
+    void setButtonPressed(bool pressed) { if (joystick) [joystick setButtonPressed:pressed]; }
+    void setAxisX(JoystickDirection state) { if (joystick) [joystick setAxisX:state]; }
+    void setAxisY(JoystickDirection state) { if (joystick) [joystick setAxisY:state]; }
+};
+
+class IOHIDDeviceInfo
+{
+private:
+    
+    int _locationID;
+    char *_name;
+    
+public:
+    
+    IOHIDDeviceInfo();
+    IOHIDDeviceInfo(IOHIDDeviceRef device);
+    IOHIDDeviceInfo(const IOHIDDeviceInfo &copy);
+    ~IOHIDDeviceInfo();
+    
+    int GetLocationID() { return _locationID; }
+    void setLocationID(int value) { _locationID = value; }
+    char *GetName() { return _name; }
+    void setName(char *value) { _name = value; }
 };
 
 class JoystickManager 
 {
-	public:
+    
+private:
+    
+    C64Proxy *_proxy;
+    IOHIDManagerRef _manager;
+    USBJoystick usbjoy[2]; // At most 2 USB joysticks can be plugged in
+
+    
+public:
 
     JoystickManager(C64Proxy *proxy);
 	~JoystickManager();
 		
-	bool Initialize();
-	void Dispose();
+	bool initialize();
+	void dispose();
 
+    //! @brief Returns true, if USBJoystick object 'nr' represents a plugged in USB joystick
     bool joystickIsPluggedIn(int nr);
 
-    // Bind virtual joystick of the emulator
-    // 'Joystick' must be one of the two objects initialized by the emulator
-    // It can be either the object representing port 1 or the object representing port 2
-    void bindJoystick(int nr, Joystick *joy);
-    
+    //! @brief Assigns a USBJoystick object to one of the two emulator Joystick objects
+    //! @deprecated
+    void bindJoystick(int nr, JoystickProxy *joy);
+
+    //! @brief Assigns a USBJoystick object to port A of the emulator
+    void bindJoystickToPortA(int nr) { assert (nr >= 1 && nr <= 2); usbjoy[nr - 1].bindJoystickToPortA(_proxy); }
+
+    //! @brief Assigns a USBJoystick object to port B of the emulator
+    void bindJoystickToPortB(int nr) { assert (nr >= 1 && nr <= 2); usbjoy[nr - 1].bindJoystickToPortB(_proxy); }
+
+    //! @brief Remove any binding to port A of the emulator
+    void unbindJoysticksFromPortA();
+
+    //! @brief Remove any binding to port B of the emulator
+    void unbindJoysticksFromPortB();
+
 	static void MatchingCallback_static(void *inContext, IOReturn inResult, void *inSender, IOHIDDeviceRef inIOHIDDeviceRef);
 	void MatchingCallback(void *inContext, IOReturn inResult, void *inSender, IOHIDDeviceRef inIOHIDDeviceRef);
 		
@@ -83,43 +140,13 @@ class JoystickManager
 	static void InputValueCallback_static(void *inContext, IOReturn inResult, void *inSender, IOHIDValueRef inIOHIDValueRef);
 	void InputValueCallback(void *inContext, IOReturn inResult, void *inSender, IOHIDValueRef inIOHIDValueRef);
 
-	private:
-    
-    C64Proxy *_proxy;
-	IOHIDManagerRef _manager;
-    int locationID1;
-    int locationID2;
-    JoystickManagerProxy *proxy1;
-    JoystickManagerProxy *proxy2;
-		
-	static const int UsageToSearch[][2];
-	static const unsigned MaxJoystickCount;
-
     void IOHIDElement_SetDoubleProperty(IOHIDElementRef element, CFStringRef key, double value);
     
-    void addJoystickProxyWithLocationID(int locationID, JoystickManagerProxy *proxy);
-    JoystickManagerProxy *getJoystickProxyWithLocationID(int locationID);
+    bool addJoystickProxyWithLocationID(int locationID);
+    USBJoystick *getJoystickProxyWithLocationID(int locationID);
     void removeJoystickProxyWithLocationID(int locationID);
     void listJoystickManagers();
 };
 
-class IOHIDDeviceInfo
-{
-    private:
 
-    int _locationID;
-    char *_name;
-
-    public:
-
-    IOHIDDeviceInfo();
-	IOHIDDeviceInfo(IOHIDDeviceRef device);
-	IOHIDDeviceInfo(const IOHIDDeviceInfo &copy);
-	~IOHIDDeviceInfo();
-		    
-    inline int GetLocationID() { return _locationID; }
-    inline void setLocationID(int value) { _locationID = value; }
-    inline const char *GetName() { return ( _name ? _name : "<NO NAME>" ); }
-    inline void setName(char *value) { _name = value; }
-};
 

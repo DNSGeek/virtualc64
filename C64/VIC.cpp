@@ -26,8 +26,8 @@
 
 VIC::VIC()
 {
-	name = "VIC";
-	debug(2, "  Creating VIC at address %p...\n", this);
+	setDescription("VIC");
+	debug(3, "  Creating VIC at address %p...\n", this);
     
 	// Start with all debug options disabled
 	markIRQLines = false;
@@ -44,15 +44,29 @@ VIC::VIC()
         { &chipModel,                   sizeof(chipModel),                      KEEP_ON_RESET },
         
         // Internal state
+        { &p.xCounter,                  sizeof(p.xCounter),                     CLEAR_ON_RESET },
+        { p.spriteX,                    sizeof(p.spriteX),                      CLEAR_ON_RESET | WORD_FORMAT },
+        { &p.spriteXexpand,             sizeof(p.spriteXexpand),                CLEAR_ON_RESET },
+        { &p.registerCTRL1,             sizeof(p.registerCTRL1),                CLEAR_ON_RESET },
+        { &p.registerCTRL2,             sizeof(p.registerCTRL2),                CLEAR_ON_RESET },
+        { &p.g_data,                    sizeof(p.g_data),                       CLEAR_ON_RESET },
+        { &p.g_character,               sizeof(p.g_character),                  CLEAR_ON_RESET },
+        { &p.g_color,                   sizeof(p.g_color),                      CLEAR_ON_RESET },
+        { &p.mainFrameFF,               sizeof(p.mainFrameFF),                  CLEAR_ON_RESET },
+        { &p.verticalFrameFF,           sizeof(p.verticalFrameFF),              CLEAR_ON_RESET },
+        { &bp.borderColor,              sizeof(bp.borderColor),                 CLEAR_ON_RESET },
+        { cp.backgroundColor,           sizeof(cp.backgroundColor),             CLEAR_ON_RESET | BYTE_FORMAT},
+        { sp.spriteColor,               sizeof(sp.spriteColor),                 CLEAR_ON_RESET | BYTE_FORMAT},
+        { &sp.spriteExtraColor1,        sizeof(sp.spriteExtraColor1),           CLEAR_ON_RESET },
+        { &sp.spriteExtraColor2,        sizeof(sp.spriteExtraColor2),           CLEAR_ON_RESET },
+        
         { &vblank,                      sizeof(vblank),                         CLEAR_ON_RESET },
-        { &xCounter,                    sizeof(xCounter),                       CLEAR_ON_RESET },
         { &yCounter,                    sizeof(yCounter),                       CLEAR_ON_RESET },
         { &yCounterEqualsIrqRasterline, sizeof(yCounterEqualsIrqRasterline),    CLEAR_ON_RESET },
         { &registerVC,                  sizeof(registerVC),                     CLEAR_ON_RESET },
         { &registerVCBASE,              sizeof(registerVCBASE),                 CLEAR_ON_RESET },
         { &registerRC,                  sizeof(registerRC),                     CLEAR_ON_RESET },
         { &registerVMLI,                sizeof(registerVMLI),                   CLEAR_ON_RESET },
-        { &oldControlReg1,              sizeof(oldControlReg1),                 CLEAR_ON_RESET },
         { &refreshCounter,              sizeof(refreshCounter),                 CLEAR_ON_RESET },
         { &addrBus,                     sizeof(addrBus),                        CLEAR_ON_RESET },
         { &dataBus,                     sizeof(dataBus),                        CLEAR_ON_RESET },
@@ -64,21 +78,14 @@ VIC::VIC()
         { &displayState,                sizeof(displayState),                   CLEAR_ON_RESET },
         { &BAlow,                       sizeof(BAlow),                          CLEAR_ON_RESET },
         { &BAwentLowAtCycle,            sizeof(BAwentLowAtCycle),               CLEAR_ON_RESET },
-        { &mainFrameFF,                 sizeof(mainFrameFF),                    CLEAR_ON_RESET },
-        { &verticalFrameFF,             sizeof(verticalFrameFF),                CLEAR_ON_RESET },
-        
         { &iomem,                       sizeof(iomem),                          CLEAR_ON_RESET },
         { &bankAddr,                    sizeof(bankAddr),                       CLEAR_ON_RESET },
-        
-        { &g_data,                      sizeof(g_data),                         CLEAR_ON_RESET },
-        { &g_character,                 sizeof(g_character),                    CLEAR_ON_RESET },
-        { &g_color,                     sizeof(g_color),                        CLEAR_ON_RESET },
-        { &g_mode,                      sizeof(g_mode),                         CLEAR_ON_RESET },
-        
+        { &isFirstDMAcycle,             sizeof(isFirstDMAcycle),                CLEAR_ON_RESET },
+        { &isSecondDMAcycle,            sizeof(isSecondDMAcycle),               CLEAR_ON_RESET },
         { &mc,                          sizeof(mc),                             CLEAR_ON_RESET | BYTE_FORMAT },
         { &mcbase,                      sizeof(mcbase),                         CLEAR_ON_RESET | BYTE_FORMAT },
+        { spritePtr,                    sizeof(spritePtr),                      CLEAR_ON_RESET | WORD_FORMAT },
         { &spriteOnOff,                 sizeof(spriteOnOff),                    CLEAR_ON_RESET },
-        { &oldSpriteOnOff,              sizeof(oldSpriteOnOff),                 CLEAR_ON_RESET },
         { &spriteDmaOnOff,              sizeof(spriteDmaOnOff),                 CLEAR_ON_RESET },
         { &expansionFF,                 sizeof(expansionFF),                    CLEAR_ON_RESET },
         { &cleared_bits_in_d017,        sizeof(cleared_bits_in_d017),           CLEAR_ON_RESET },
@@ -96,23 +103,14 @@ void
 VIC::reset()
 {
     VirtualComponent::reset();
-	
-    // Establish bindungs
-    cpu = c64->cpu;
-    mem = c64->mem;
     
-    // Reset subcomponents
-    pixelEngine.reset();
-
     // Internal state
     yCounter = PAL_HEIGHT;
-    iomem[0x20] = PixelEngine::LTBLUE; // Let the border color look correct right from the beginning
-    iomem[0x21] = PixelEngine::BLUE;   // Let the background color look correct right from the beginning
-	iomem[0x11] = 0x10;                // Make screen visible from the beginning
+    bp.borderColor = PixelEngine::LTBLUE;      // Let the border color look correct right from the beginning
+    cp.backgroundColor[0] = PixelEngine::BLUE; // Let the background color look correct right from the beginning
+    setScreenMemoryAddr(0x400);                // Remove startup graphics glitches by setting the initial value early
+	p.registerCTRL1 = 0x10;                    // Make screen visible from the beginning
 	expansionFF = 0xFF;
-    
-    // Remove startup graphics glitches by setting the initial value early
-    setScreenMemoryAddr(0x400);
     
 	// Debugging	
 	drawSprites = true;
@@ -156,14 +154,14 @@ VIC::dumpState()
 		default:
 			msg("Invalid\n");
 	}
-	msg("            (X,Y) : (%d,%d) %s %s\n", xCounter, yCounter,  badLineCondition ? "(DMA line)" : "", DENwasSetInRasterline30 ? "" : "(DMA lines disabled, no DEN bit in rasterline 30)");
+	msg("            (X,Y) : (%d,%d) %s %s\n", p.xCounter, yCounter,  badLineCondition ? "(DMA line)" : "", DENwasSetInRasterline30 ? "" : "(DMA lines disabled, no DEN bit in rasterline 30)");
 	msg("               VC : %02X\n", registerVC);
 	msg("           VCBASE : %02X\n", registerVCBASE);
 	msg("               RC : %02X\n", registerRC);
 	msg("             VMLI : %02X\n", registerVMLI);
 	msg("          BA line : %s\n", BAlow ? "low" : "high");
-	msg("      MainFrameFF : %d\n", mainFrameFF);
-	msg("  VerticalFrameFF : %d\n", verticalFrameFF);
+	msg("      MainFrameFF : %d\n", p.mainFrameFF);
+	msg("  VerticalFrameFF : %d\n", p.verticalFrameFF);
 	msg("     DisplayState : %s\n", displayState ? "on" : "off");
 	msg("         SpriteOn : %02X ( ", spriteOnOff);
 	for (int i = 0; i < 8; i++) 
@@ -189,7 +187,7 @@ VIC::dumpState()
 }
 
 void
-VIC::setChipModel(ChipModel model)
+VIC::setChipModel(VICChipModel model)
 {
     chipModel = model;
     pixelEngine.resetScreenBuffers();
@@ -222,10 +220,10 @@ uint8_t VIC::memAccess(uint16_t addr)
         // Accessing range 0x1000 - 0x1FFF or 0x9000 - 0x9FFF
         // Character ROM is blended in here
         assert ((0xC000 + addr) >= 0xD000 && (0xC000 + addr) <= 0xDFFF);
-        dataBus = mem->rom[0xC000 + addr];
+        dataBus = c64->mem.rom[0xC000 + addr];
 
     } else {
-        dataBus = mem->ram[addrBus];
+        dataBus = c64->mem.ram[addrBus];
     }
     
     return dataBus;
@@ -235,7 +233,7 @@ uint8_t VIC::memIdleAccess()
 {
     // return memAccess(0x3FFF);
     addrBus = bankAddr + 0x3FFF;
-    return mem->ram[addrBus];
+    return c64->mem.ram[addrBus];
 }
 
 inline void VIC::cAccess()
@@ -251,7 +249,7 @@ inline void VIC::cAccess()
         uint16_t addr = (VM13VM12VM11VM10() << 6) | registerVC;
         
         characterSpace[registerVMLI] = memAccess(addr);
-        colorSpace[registerVMLI] = mem->colorRam[registerVC] & 0x0F;
+        colorSpace[registerVMLI] = c64->mem.colorRam[registerVC] & 0x0F;
     }
     
     // VIC has no access, yet
@@ -274,7 +272,7 @@ inline void VIC::cAccess()
             Erst danach werden wieder reguläre Videomatrixdaten gelesen." [C.B.] */
         
         characterSpace[registerVMLI] = 0xFF;
-        colorSpace[registerVMLI] = c64->mem->ram[cpu->getPC()] & 0x0F;
+        colorSpace[registerVMLI] = c64->mem.ram[c64->cpu.getPC()] & 0x0F;
     }
 }
 
@@ -310,10 +308,9 @@ inline void VIC::gAccess()
             addr &= 0xF9FF;
 
         // Prepare graphic sequencer
-        g_data = memAccess(addr);
-        g_character = characterSpace[registerVMLI];
-        g_color = colorSpace[registerVMLI];
-        g_mode = getDisplayMode();
+        p.g_data = memAccess(addr);
+        p.g_character = characterSpace[registerVMLI];
+        p.g_color = colorSpace[registerVMLI];
         
         // "Nach jedem g-Zugriff im Display-Zustand werden VC und VMLI erhöht." [C.B.]
         registerVC++;
@@ -327,48 +324,50 @@ inline void VIC::gAccess()
         addr = ECMbitInPreviousCycle() ? 0x39FF : 0x3FFF;
         
         // Prepare graphic sequencer
-        g_data = memAccess(addr);
-        g_character = 0;
-        g_color = 0;
-        g_mode = getDisplayMode();
+        p.g_data = memAccess(addr);
+        p.g_character = 0;
+        p.g_color = 0;
     }
 }
 
-inline void VIC::pAccess(int sprite)
+inline void VIC::pAccess(unsigned sprite)
 {
+    assert(sprite < 8);
+
     // |VM13|VM12|VM11|VM10|  1 |  1 |  1 |  1 |  1 |  1 |  1 |  Spr.-Nummer |
     spritePtr[sprite] = memAccess((VM13VM12VM11VM10() << 6) | 0x03F8 | sprite) << 6;
 
 }
 
-// TODO: Change return type to void
-inline bool VIC::sFirstAccess(int sprite)
+inline void VIC::sFirstAccess(unsigned sprite)
 {
+    assert(sprite < 8);
+    
     uint8_t data = 0x00; // TODO: VICE is doing this: vicii.last_bus_phi2;
-    bool memAccessed = false;
+    
+    isFirstDMAcycle = (1 << sprite);
     
     if (spriteDmaOnOff & (1 << sprite)) {
         
-        if (BApulledDownForAtLeastThreeCycles()) {
+        if (BApulledDownForAtLeastThreeCycles())
             data = memAccess(spritePtr[sprite] | mc[sprite]);
-            memAccessed = true;
-        }
 
         mc[sprite]++;
         mc[sprite] &= 0x3F; // 6 bit overflow
     }
     
-    // load data into shift register
-    // pixelEngine.sprite_sr[sprite].data.chunk[0] = data;
-    pixelEngine.sprite_sr[sprite].data = data;
-    return memAccessed;
+    pixelEngine.sprite_sr[sprite].chunk1 = data;
 }
 
-// TODO: Change return type to void
-inline bool VIC::sSecondAccess(int sprite)
+inline void VIC::sSecondAccess(unsigned sprite)
 {
+    assert(sprite < 8);
+    
     uint8_t data = 0x00; // TODO: VICE is doing this: vicii.last_bus_phi2;
     bool memAccessed = false;
+    
+    isFirstDMAcycle = 0;
+    isSecondDMAcycle = (1 << sprite);
     
     if (spriteDmaOnOff & (1 << sprite)) {
         
@@ -386,35 +385,33 @@ inline bool VIC::sSecondAccess(int sprite)
     if (!memAccessed)
         memIdleAccess();
     
-    // load data into shift register
-    // pixelEngine.sprite_sr[sprite].data.chunk[1] = data;
-    pixelEngine.sprite_sr[sprite].data = (pixelEngine.sprite_sr[sprite].data << 8) | data;
-    return memAccessed;
+    pixelEngine.sprite_sr[sprite].chunk2 = data;
 }
 
-// TODO: Change return type to void
-inline bool VIC::sThirdAccess(int sprite)
+inline void VIC::sThirdAccess(unsigned sprite)
 {
+    assert(sprite < 8);
+    
     uint8_t data = 0x00; // TODO: VICE is doing this: vicii.last_bus_phi2;
-    bool memAccessed = false;
     
     if (spriteDmaOnOff & (1 << sprite)) {
         
-        if (BApulledDownForAtLeastThreeCycles()) {
+        if (BApulledDownForAtLeastThreeCycles())
             data = memAccess(spritePtr[sprite] | mc[sprite]);
-            memAccessed = true;
-        }
 
         mc[sprite]++;
         mc[sprite] &= 0x3F; // 6 bit overflow
     }
     
-    // load data into shift register
-    // pixelEngine.sprite_sr[sprite].data.chunk[2] = data;
-    pixelEngine.sprite_sr[sprite].data = (pixelEngine.sprite_sr[sprite].data << 8) | data;
-    return memAccessed;
+    pixelEngine.sprite_sr[sprite].chunk3 = data;
 }
 
+
+inline void VIC::sFinalize(unsigned sprite)
+{
+    assert(sprite < 8);
+    isSecondDMAcycle = 0;
+}
 
 // -----------------------------------------------------------------------------------------------
 //                                       Getter and setter
@@ -474,7 +471,7 @@ VIC::peek(uint16_t addr)
 	
 	switch(addr) {
 		case 0x11: // SCREEN CONTROL REGISTER #1
-			result = (iomem[addr] & 0x7f) + (yCounter > 0xff ? 128 : 0);
+			result = (p.registerCTRL1 & 0x7f) + (yCounter > 0xff ? 128 : 0);
 			return result;
             
 		case 0x12: // VIC_RASTER_READ_WRITE
@@ -488,7 +485,7 @@ VIC::peek(uint16_t addr)
 			return iomem[addr];
             
         case 0x16:
-            result = iomem[addr] | 0xC0; // Bits 7 and 8 are unused (always 1)
+            result = p.registerCTRL2 | 0xC0; // Bits 7 and 8 are unused (always 1)
             return result;
             
    		case 0x18:
@@ -503,6 +500,9 @@ VIC::peek(uint16_t addr)
 			result = iomem[addr] | 0xF0; // Bits 4 to 7 are unsed (always 1)
 			return result;
             
+        case 0x1D: // SPRITE_X_EXPAND
+            return p.spriteXexpand;
+
 		case 0x1E: // Sprite-to-sprite collision
 			result = iomem[addr];
 			iomem[addr] = 0x00;  // Clear on read
@@ -512,13 +512,34 @@ VIC::peek(uint16_t addr)
 			result = iomem[addr];
 			iomem[addr] = 0x00;  // Clear on read
 			return result;
-	}
-	
-	if (addr >= 0x20 && addr <= 0x2E) {
-		// Color registers
-		return iomem[addr] | 0xF0; // Bits 4 to 7 are unsed (always 1)
-	}
-	
+
+        case 0x20:
+            return bp.borderColor | 0xF0; // Bits 4 to 7 are unsed (always 1)
+            
+        case 0x21: // Backgrund color
+        case 0x22: // Extended background color 1
+        case 0x23: // Extended background color 2
+        case 0x24: // Extended background color 3
+            return cp.backgroundColor[addr - 0x21] | 0xF0; // Bits 4 to 7 are unsed (always 1)
+            
+        case 0x25: // Sprite extra color 1 (for multicolor sprites)
+            return sp.spriteExtraColor1 | 0xF0;
+            
+        case 0x26: // Sprite extra color 2 (for multicolor sprites)
+            return sp.spriteExtraColor2 | 0xF0;
+            
+        case 0x27: // Sprite color 1
+        case 0x28: // Sprite color 2
+        case 0x29: // Sprite color 3
+        case 0x2A: // Sprite color 4
+        case 0x2B: // Sprite color 5
+        case 0x2C: // Sprite color 6
+        case 0x2D: // Sprite color 7
+        case 0x2E: // Sprite color 8
+            return sp.spriteColor[addr - 0x27] | 0xF0;
+
+    }
+		
 	if (addr >= 0x2F && addr <= 0x3F) {
 		// Unusable register area
 		return 0xFF; 
@@ -534,26 +555,70 @@ VIC::poke(uint16_t addr, uint8_t value)
 	assert(addr <= VIC_END_ADDR - VIC_START_ADDR);
 	
 	switch(addr) {		
-		case 0x11: // CONTROL_REGISTER_1
-			if ((iomem[addr] & 0x80) != (value & 0x80)) {
-				// Value changed: Check if we need to trigger an interrupt immediately
-				iomem[addr] = value;
-				if (yCounter == rasterInterruptLine())
-					triggerIRQ(1);
-			} else {
-				iomem[addr] = value;
-			}
-			
-			// Check the DEN bit if we're in rasterline 30
+        case 0x00: // SPRITE_0_X
+            p.spriteX[0] = value | ((iomem[0x10] & 0x01) << 8);
+            break;
+
+        case 0x02: // SPRITE_1_X
+            p.spriteX[1] = value | ((iomem[0x10] & 0x02) << 7);
+            break;
+
+        case 0x04: // SPRITE_2_X
+            p.spriteX[2] = value | ((iomem[0x10] & 0x04) << 6);
+            break;
+
+        case 0x06: // SPRITE_3_X
+            p.spriteX[3] = value | ((iomem[0x10] & 0x08) << 5);
+            break;
+
+        case 0x08: // SPRITE_4_X
+            p.spriteX[4] = value | ((iomem[0x10] & 0x10) << 4);
+            break;
+
+        case 0x0A: // SPRITE_5_X
+            p.spriteX[5] = value | ((iomem[0x10] & 0x20) << 3);
+            break;
+            
+        case 0x0C: // SPRITE_6_X
+            p.spriteX[6] = value | ((iomem[0x10] & 0x40) << 2);
+            break;
+            
+        case 0x0E: // SPRITE_7_X
+            p.spriteX[7] = value | ((iomem[0x10] & 0x80) << 1);
+            break;
+
+        case 0x10: // SPRITE_X_UPPER_BITS
+            p.spriteX[0] = (p.spriteX[0] & 0xFF) | ((value & 0x01) << 8);
+            p.spriteX[1] = (p.spriteX[1] & 0xFF) | ((value & 0x02) << 7);
+            p.spriteX[2] = (p.spriteX[2] & 0xFF) | ((value & 0x04) << 6);
+            p.spriteX[3] = (p.spriteX[3] & 0xFF) | ((value & 0x08) << 5);
+            p.spriteX[4] = (p.spriteX[4] & 0xFF) | ((value & 0x10) << 4);
+            p.spriteX[5] = (p.spriteX[5] & 0xFF) | ((value & 0x20) << 3);
+            p.spriteX[6] = (p.spriteX[6] & 0xFF) | ((value & 0x40) << 2);
+            p.spriteX[7] = (p.spriteX[7] & 0xFF) | ((value & 0x80) << 1);
+            break;
+
+        case 0x11: // CONTROL_REGISTER_1
+
+            if ((p.registerCTRL1 & 0x80) != (value & 0x80)) {
+                // Value changed: Check if we need to trigger an interrupt immediately
+                p.registerCTRL1 = value;
+                if (yCounter == rasterInterruptLine())
+                    triggerIRQ(1);
+            } else {
+                p.registerCTRL1 = value;
+            }
+            
+            // Check the DEN bit if we're in rasterline 30
             // If it's set at some point in that line, bad line conditions can occur
-			if (yCounter == 0x30 && (value & 0x10) != 0)
+            if (yCounter == 0x30 && (value & 0x10) != 0)
                 DENwasSetInRasterline30 = true;
-			
-			// Bits 0 - 3 determine the vertical scroll offset.
+            
+            // Bits 0 - 3 determine the vertical scroll offset.
             // Changing these bits directly affects the badline line condition the middle of a rasterline
-			updateBadLineCondition();
-			return;
-			
+            updateBadLineCondition();
+            return;
+
 		case 0x12: // RASTER_COUNTER
 			if (iomem[addr] != value) {
 				// Value changed: Check if we need to trigger an interrupt immediately
@@ -564,12 +629,11 @@ VIC::poke(uint16_t addr, uint8_t value)
 				iomem[addr] = value;
 			}
 			return;
-				
-        /*
-        case 0x16:
-            // DEBUG CODE WAS HERE
-            break;
-        */
+
+        case 0x16: // CONTROL_REGISTER_2
+
+            p.registerCTRL2 = value;
+            return;
             
 		case 0x17: // SPRITE Y EXPANSION
 			iomem[addr] = value;
@@ -588,22 +652,56 @@ VIC::poke(uint16_t addr, uint8_t value)
 		case 0x19: // IRQ flags
 			// A bit is cleared when a "1" is written
 			iomem[addr] &= (~value & 0x0f);
-			cpu->clearIRQLineVIC();
+			c64->cpu.clearIRQLineVIC();
 			if (iomem[addr] & iomem[0x1a])
 				iomem[addr] |= 0x80;
 			return;
-			
+
+        case 0x20: // Border color
+            bp.borderColor = value & 0x0F;
+            return;
+
+        case 0x21: // Backgrund color
+        case 0x22: // Extended background color 1
+        case 0x23: // Extended background color 2
+        case 0x24: // Extended background color 3
+            cp.backgroundColor[addr - 0x21] = value & 0x0F;
+            return;
+
+        case 0x25: // Sprite extra color 1 (for multicolor sprites)
+            sp.spriteExtraColor1 = value & 0x0F;
+            return;
+
+        case 0x26: // Sprite extra color 2 (for multicolor sprites)
+            sp.spriteExtraColor2 = value & 0x0F;
+            return;
+
+        case 0x27: // Sprite color 1
+        case 0x28: // Sprite color 2
+        case 0x29: // Sprite color 3
+        case 0x2A: // Sprite color 4
+        case 0x2B: // Sprite color 5
+        case 0x2C: // Sprite color 6
+        case 0x2D: // Sprite color 7
+        case 0x2E: // Sprite color 8
+            sp.spriteColor[addr - 0x27] = value & 0x0F;
+            return;
+            
 		case 0x1a: // IRQ mask
 			iomem[addr] = value & 0x0f;
 			if (iomem[addr] & iomem[0x19]) {
 				iomem[0x19] |= 0x80; // set uppermost bit (is directly connected to the IRQ line)
-				cpu->setIRQLineVIC(); 
+				c64->cpu.setIRQLineVIC();
 			} else {
 				iomem[0x19] &= 0x7f; // clear uppermost bit
-				cpu->clearIRQLineVIC(); 
+				c64->cpu.clearIRQLineVIC();
 			}
 			return;		
 			
+        case 0x1D: // SPRITE_X_EXPAND
+            p.spriteXexpand = value;
+            return;
+            
 		case 0x1E:
 		case 0x1F:
 			// Writing has no effect
@@ -626,7 +724,7 @@ VIC::setScreenGeometry(ScreenGeometry mode)
 	setNumberOfColumns((mode == COL_40_ROW_25 || mode == COL_40_ROW_24) ? 40 : 38);
 }
 
-VIC::ScreenGeometry 
+ScreenGeometry 
 VIC::getScreenGeometry()
 {
 	if (numberOfColumns() == 40) {
@@ -648,13 +746,13 @@ VIC::getScreenGeometry()
 // -----------------------------------------------------------------------------------------------
 
 inline void
-VIC::setBAlow(bool value)
+VIC::setBAlow(uint8_t value)
 {
-    if (!BAlow && value) {
+    if (!BAlow && value)
         BAwentLowAtCycle = c64->getCycles();
-    }
+    
     BAlow = value;
-    cpu->setRDY(value == 0);
+    c64->cpu.setRDY(value == 0);
 }
 
 inline bool
@@ -670,7 +768,7 @@ VIC::triggerIRQ(uint8_t source)
 	if (iomem[0x1A] & source) {
 		// Interrupt is enabled
 		iomem[0x19] |= 128;
-		cpu->setIRQLineVIC();
+		c64->cpu.setIRQLineVIC();
 		// debug("Interrupting at rasterline %x %d\n", yCounter, yCounter);
 	}
 }
@@ -686,7 +784,7 @@ VIC::triggerLightPenInterrupt()
 		lightpenIRQhasOccured = true;
 
 		// determine current coordinates
-        int x = xCounter;
+        int x = p.xCounter - 4; // Is this correct?
         int y = yCounter;
 				
 		// latch coordinates 
@@ -738,18 +836,13 @@ VIC::turnSpriteDmaOn()
     //     Y-Koordinate des Sprites (ungerade Register $d001-$d00f) gleich den
     //     unteren 8 Bits von RASTER ist. Ist dies der Fall und [3] der DMA für das
     //     Sprite noch ausgeschaltet, wird [4] der DMA angeschaltet, [5] MCBASE gelöscht[.]" [C.B.]
+    uint8_t risingEdges = ~spriteDmaOnOff & (iomem[0x15] & compareSpriteY(yCounter));
+    for (unsigned i = 0; i < 8; i++)
+        if (GET_BIT(risingEdges,i))
+            mcbase[i] = 0;
     
-    for (unsigned i = 0; i < 8; i++) {
-        if (spriteIsEnabled(i)) { /* [1] */
-            if (getSpriteY(i) == (yCounter & 0xff)) { /* [2] */
-                if (!GET_BIT(spriteDmaOnOff,i)) { /* [3] */
-                    SET_BIT(spriteDmaOnOff,i); /* [4] */
-                    mcbase[i] = 0; /* [5] */
-                    SET_BIT(expansionFF,i); // will be flipped for stretched sprites in cycle 56
-                }
-            }
-        }
-    }
+    expansionFF |= risingEdges;
+    spriteDmaOnOff |= risingEdges;
 }
 
 void
@@ -757,41 +850,6 @@ VIC::toggleExpansionFlipflop()
 {
     // A '1' in D017 means that the sprite is vertically stretched
     expansionFF ^= iomem[0x17];
-}
-
-void
-VIC::turnSpriteDisplayOn()
-{
-    // "4. In der ersten Phase von Zyklus 58 wird [1] für jedes Sprite [2] MC mit MCBASE
-    //     geladen (MCBASE->MC) und geprüft, [3] ob der DMA für das Sprite angeschaltet
-    //     und [4] die Y-Koordinate des Sprites gleich den unteren 8 Bits von RASTER
-    //     ist. Ist dies der Fall, wird [5] die Darstellung des Sprites angeschaltet." [C.B.]
-    
-    oldSpriteOnOff = spriteOnOff;
-    for (unsigned i = 0; i < 8; i++) { /* [1] */
-        mc[i] = mcbase[i]; /* [2] */
-        if (GET_BIT(spriteDmaOnOff, i)) { /* [3] */
-            if (getSpriteY(i) == (yCounter & 0xFF)) /* [4] */
-                SET_BIT(spriteOnOff,i); /* [5] */
-        }
-#if 0
-         else {
-            // switch off sprites with no dma access
-            CLR_BIT(spriteOnOff, i);
-        }
-#endif
-        
-    }
-}
-
-void
-VIC::turnSpriteDisplayOff()
-{
-    // switch off sprites if dma is off
-    for (int i = 0; i < 8; i++) {
-        if (GET_BIT(spriteOnOff, i) && !GET_BIT(spriteDmaOnOff, i))
-            CLR_BIT(spriteOnOff, i);
-    }
 }
 
 
@@ -808,31 +866,25 @@ VIC::checkVerticalFrameFF()
     }
     // Trigger immediately (similar to VICE)
     if (verticalFrameFFclearCond) {
-        verticalFrameFF = false;
+        p.verticalFrameFF = false;
     }
     
     // Check for lower border
     if (yCounter == lowerComparisonValue()) {
         verticalFrameFFsetCond = true;
-        verticalFrameFF = true;
     }
-    // Trigger immediately (VICE does this in cycle 1)
-    if (verticalFrameFFsetCond) {
-        verticalFrameFF = true;
-    }
-
+    // Trigger in cycle 1 (similar to VICE)
 }
 
 void
 VIC::checkFrameFlipflopsLeft(uint16_t comparisonValue)
 {
-    if (comparisonValue == leftComparisonValue()) {
+    // "6. Erreicht die X-Koordinate den linken Vergleichswert und ist das
+    //     vertikale Rahmenflipflop gelöscht, wird das Haupt-Flipflop gelöscht." [C.B.]
 
-        // "6. Erreicht die X-Koordinate den linken Vergleichswert und ist das
-        //     vertikale Rahmenflipflop gelöscht, wird das Haupt-Flipflop gelöscht." [C.B.]
+    if (comparisonValue == leftComparisonValue()) {
         clearMainFrameFF();
     }
-
 }
 
 void
@@ -842,9 +894,8 @@ VIC::checkFrameFlipflopsRight(uint16_t comparisonValue)
     //     Haupt-Rahmenflipflop gesetzt." [C.B.]
     
     if (comparisonValue == rightComparisonValue()) {
-        mainFrameFF = true;
+        p.mainFrameFF = true;
     }
-
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -930,7 +981,7 @@ VIC::endRasterline()
 {
     // Set vertical flipflop if condition was hit
     if (verticalFrameFFsetCond) {
-        verticalFrameFF = true;
+        p.verticalFrameFF = true;
     }
     
     // Draw debug markers
@@ -940,7 +991,7 @@ VIC::endRasterline()
         pixelEngine.markLine(PixelEngine::RED);
 
     /*
-    if (yCounter == 52 && !vblank) {
+    if (c64->rasterline == 51 && !vblank) {
         pixelEngine.markLine(4);
     }
     */
@@ -948,31 +999,13 @@ VIC::endRasterline()
     pixelEngine.endRasterline();
 }
 
-bool
+inline bool
 VIC::yCounterOverflow()
 {
     // PAL machines reset yCounter in cycle 2 in the first physical rasterline
     // NTSC machines reset yCounter in cycle 2 in the middle of the lower border area
-    return (c64->isPAL() && c64->getRasterline() == 0) || (!c64->isPAL() && c64->getRasterline() == 238);
-}
-
-inline void
-VIC::preparePixelEngine()
-{
-    pixelEngine.dc.yCounter = yCounter;
-    pixelEngine.dc.xCounter = xCounter;
-    pixelEngine.dc.verticalFrameFF = verticalFrameFF;
-    pixelEngine.dc.mainFrameFF = mainFrameFF;
-    pixelEngine.dc.data = g_data;
-    pixelEngine.dc.character = g_character;
-    pixelEngine.dc.color = g_color;
-    pixelEngine.dc.mode = g_mode;
-    pixelEngine.dc.delay = getHorizontalRasterScroll();
-    
-    for (unsigned i = 0; i < 8; i++) {
-        pixelEngine.dc.spriteX[i] = getSpriteX(i);
-    }
-    pixelEngine.dc.spriteXexpand = iomem[0x1D];
+    // return (c64->isPAL() && c64->getRasterline() == 0) || (!c64->isPAL() && c64->getRasterline() == 238);
+    return c64->getRasterline() == (c64->isPAL() ? 0 : 238);
 }
 
 void
@@ -982,13 +1015,19 @@ VIC::cycle1()
         
     // Phi1.1 Frame logic
     checkVerticalFrameFF();
+    if (verticalFrameFFsetCond) {
+        p.verticalFrameFF = true;
+    }
     
     // Phi1.2 Draw
     // Phi1.3 Fetch
-    if (isPAL())
+    if (isPAL()) {
+        sFinalize(2);
+        pixelEngine.loadShiftRegister(2);
         pAccess(3);
-    else
+    } else {
         sSecondAccess(3);
+    }
     
     // Phi2.1 Rasterline interrupt (edge triggered)
     bool edgeOnYCounter = (c64->getRasterline() != 0);
@@ -1006,11 +1045,11 @@ VIC::cycle1()
         setBAlow(spriteDmaOnOff & (SPR3 | SPR4 | SPR5));
     
     // Phi2.5 Fetch
-    if (isPAL())
+    if (isPAL()) {
         sFirstAccess(3);
-    else
+    } else {
         sThirdAccess(3);
-    
+    }
     // Finalize
     updateDisplayState();
 	countX();
@@ -1030,11 +1069,14 @@ VIC::cycle2()
     
     // Phi1.2 Draw
     // Phi1.3 Fetch
-    if (isPAL())
+    if (isPAL()) {
         sSecondAccess(3);
-    else
+    } else {
+        sFinalize(3);
+        pixelEngine.loadShiftRegister(3);
         pAccess(4);
-    
+    }
+
     // Phi2.2 Sprite logic
     // Phi2.1 Rasterline interrupt (edge triggered)
     bool edgeOnYCounter = (yCounter == 0);
@@ -1070,10 +1112,13 @@ VIC::cycle3()
 
     // Phi1.2 Draw
     // Phi1.3 Fetch
-    if (isPAL())
+    if (isPAL()) {
+        sFinalize(3);
+        pixelEngine.loadShiftRegister(3);
         pAccess(4);
-    else
+    } else {
         sSecondAccess(4);
+    }
     
     // Phi2.1 Rasterline interrupt
     // Phi2.2 Sprite logic
@@ -1105,10 +1150,13 @@ VIC::cycle4()
 
     // Phi1.2 Draw
     // Phi1.3 Fetch
-    if (isPAL())
+    if (isPAL()) {
         sSecondAccess(4);
-    else
+    } else {
+        sFinalize(4);
+        pixelEngine.loadShiftRegister(4);
         pAccess(5);
+    }
     
     // Phi2.1 Rasterline interrupt
     // Phi2.2 Sprite logic
@@ -1141,10 +1189,13 @@ VIC::cycle5()
 
     // Phi1.2 Draw
     // Phi1.3 Fetch
-    if (isPAL())
+    if (isPAL()) {
+        sFinalize(4);
+        pixelEngine.loadShiftRegister(4);
         pAccess(5);
-    else
+    } else {
         sSecondAccess(5);
+    }
     
     // Phi2.1 Rasterline interrupt
     // Phi2.2 Sprite logic
@@ -1177,10 +1228,13 @@ VIC::cycle6()
 
     // Phi1.2 Draw
     // Phi1.3 Fetch
-    if (isPAL())
+    if (isPAL()) {
         sSecondAccess(5);
-    else
+    } else {
+        sFinalize(5);
+        pixelEngine.loadShiftRegister(5);
         pAccess(6);
+    }
     
     // Phi2.1 Rasterline interrupt
     // Phi2.2 Sprite logic
@@ -1214,10 +1268,13 @@ VIC::cycle7()
 
     // Phi1.2 Draw
     // Phi1.3 Fetch
-    if (isPAL())
+    if (isPAL()) {
+        sFinalize(5);
+        pixelEngine.loadShiftRegister(5);
         pAccess(6);
-    else
+    } else {
         sSecondAccess(6);
+    }
     
     // Phi2.1 Rasterline interrupt
     // Phi2.2 Sprite logic
@@ -1246,10 +1303,13 @@ VIC::cycle8()
 
     // Phi1.2 Draw
     // Phi1.3 Fetch
-    if (isPAL())
+    if (isPAL()) {
         sSecondAccess(6);
-    else
+    } else {
+        sFinalize(6);
+        pixelEngine.loadShiftRegister(6);
         pAccess(7);
+    }
     
     // Phi2.1 Rasterline interrupt
     // Phi2.2 Sprite logic
@@ -1281,10 +1341,13 @@ VIC::cycle9()
 
     // Phi1.2 Draw
     // Phi1.3 Fetch
-    if (isPAL())
+    if (isPAL()) {
+        sFinalize(6);
+        pixelEngine.loadShiftRegister(6);
         pAccess(7);
-    else
+    } else {
         sSecondAccess(7);
+    }
     
     // Phi2.1 Rasterline interrupt
     // Phi2.2 Sprite logic
@@ -1312,11 +1375,16 @@ VIC::cycle10()
     checkVerticalFrameFF();
 
     // Phi1.2 Draw
+    preparePixelEngine();
+    
     // Phi1.3 Fetch
-    if (isPAL())
+    if (isPAL()) {
         sSecondAccess(7);
-    else
+    } else {
+        sFinalize(7);
+        pixelEngine.loadShiftRegister(7);
         rIdleAccess();
+    }
     
     // Phi2.1 Rasterline interrupt
     // Phi2.2 Sprite logic
@@ -1346,7 +1414,14 @@ VIC::cycle11()
     checkVerticalFrameFF();
 
     // Phi1.2 Draw
+    pixelEngine.drawOutsideBorder(); // Runs the sprite sequencer, only
+    preparePixelEngine();
+    
     // Phi1.3 Fetch (first out of five DRAM refreshs)
+    if (isPAL()) {
+        sFinalize(7);
+        pixelEngine.loadShiftRegister(7);
+    }
     rAccess();
     
     // Phi2.1 Rasterline interrupt
@@ -1370,6 +1445,9 @@ VIC::cycle12()
     checkVerticalFrameFF();
 
     // Phi1.2 Draw
+    pixelEngine.drawOutsideBorder(); // Runs the sprite sequencer, only
+    preparePixelEngine();
+    
     // Phi1.3 Fetch (second out of five DRAM refreshs)
     rAccess();
 
@@ -1403,11 +1481,11 @@ VIC::cycle13() // X Coordinate -3 - 4 (?)
     checkVerticalFrameFF();
 
     // Phi1.2 Draw
-    xCounter = -4;
+    pixelEngine.drawOutsideBorder(); // Runs the sprite sequencer, only
     preparePixelEngine(); // Prepare for next cycle (first border column)
-    // Update pixelEngines color registers to get the first pixel right
-    pixelEngine.updateColorRegisters();
-    pixelEngine.updateBorderColorRegister();
+    // Update color registers in pixel engine to get the first pixel right
+    pixelEngine.cpipe = cp;
+    pixelEngine.bpipe = bp;
 
     // Phi1.3 Fetch (third out of five DRAM refreshs)
     rAccess();
@@ -1421,7 +1499,7 @@ VIC::cycle13() // X Coordinate -3 - 4 (?)
     // Phi2.5 Fetch
     // Finalize
     updateDisplayState();
-    countX();
+    p.xCounter = 0;
 }
 
 void
@@ -1433,6 +1511,7 @@ VIC::cycle14() // SpriteX: 0 - 7 (?)
     checkVerticalFrameFF();
 
     // Phi1.2 Draw
+    pixelEngine.visibleColumn = true; // We have reach the first visible column 
     pixelEngine.draw(); // Draw previous cycle (first border column)
     preparePixelEngine(); // Prepare for next cycle (border column 2)
 
@@ -1562,6 +1641,7 @@ VIC::cycle18() // SpriteX: 32 - 39
     checkFrameFlipflopsLeft(31);
     
     // Phi1.2 Draw
+    pixelEngine.sr.canLoad = true; // Entering canvas area
     pixelEngine.draw17(); // Draw previous cycle (first canvas column)
     preparePixelEngine(); // Prepare for next cycle (canvas column 2)
 
@@ -1659,7 +1739,6 @@ VIC::cycle56()
     
     // Phi1.3 Fetch
     rIdleAccess();
-    g_data = 0; // no more gAccesses from now on (TODO: BETTER MOVE TO rIdleAccess(?))
 
     // Phi2.1 Rasterline interrupt
     // Phi2.2 Sprite logic
@@ -1688,7 +1767,8 @@ VIC::cycle57()
     // Phi1.2 Draw (border starts here)
     pixelEngine.draw(); // Draw previous cycle (last canvas column)
     preparePixelEngine(); // Prepare for next cycle (first column of right border)
-    
+    pixelEngine.sr.canLoad = false; // Leaving canvas area
+
     // Phi1.3 Fetch
     rIdleAccess();
     
@@ -1721,19 +1801,25 @@ VIC::cycle58()
     preparePixelEngine(); // Prepare for next cycle (column 2 of right border)
     
     // Phi1.3 Fetch
-    if (isPAL())
+    if (isPAL()) {
         pAccess(0);
-    else
+    } else {
         rIdleAccess();
+    }
     
     // Phi2.1 Rasterline interrupt
     // Phi2.2 Sprite logic
-    turnSpriteDisplayOn();
+    
+    // Reset mc with mcbase for all sprites
+    for (unsigned i = 0; i < 8; i++)
+        mc[i] = mcbase[i];
+    
+    // Turn display on for all sprites with a matching y coordinate
+    // Sprite display remains off if sprite DMA is off or sprite is disabled (register 0x15)
+    spriteOnOff |= spriteDmaOnOff & iomem[0x15] & compareSpriteY((uint8_t)yCounter);
 
-    // Old line based sprite drawing routine (DEPRECATED)
-	// pixelEngine.drawAllSprites();
-			
-    turnSpriteDisplayOff();
+    // Turn display off for all sprites that lost DMA.
+    spriteOnOff &= spriteDmaOnOff;
     
     // Phi2.3 VC/RC logic
     
@@ -1783,11 +1869,12 @@ VIC::cycle59()
     preparePixelEngine(); // Prepare for next cycle (column 3 of right border)
     
     // Phi1.3 Fetch
-    if (isPAL())
+    if (isPAL()) {
         sSecondAccess(0);
-    else
+    } else {
         pAccess(0);
- 
+    }
+    
     // Phi2.1 Rasterline interrupt
     // Phi2.2 Sprite logic
     // Phi2.3 VC/RC logic
@@ -1821,10 +1908,12 @@ VIC::cycle60()
     preparePixelEngine(); // Prepare for next cycle (last column of right border)
     
     // Phi1.3 Fetch
-    if (isPAL())
+    if (isPAL()) {
+        sFinalize(0);
         pAccess(1);
-    else
+    } else {
         sSecondAccess(0);
+    }
     
     // Phi2.1 Rasterline interrupt
     // Phi2.2 Sprite logic
@@ -1856,12 +1945,15 @@ VIC::cycle61()
 
     // Phi1.2 Draw
     pixelEngine.draw(); // Draw previous cycle (last column of right border)
+    pixelEngine.visibleColumn = false; // This was the last visible column
     
     // Phi1.3 Fetch
-    if (isPAL())
+    if (isPAL()) {
         sSecondAccess(1);
-    else
+    } else {
+        sFinalize(0);
         pAccess(1);
+    }
     
     // Phi2.1 Rasterline interrupt
     // Phi2.2 Sprite logic
@@ -1892,12 +1984,17 @@ VIC::cycle62()
     checkVerticalFrameFF();
 
     // Phi1.2 Draw
+    // pixelEngine.drawSprites();
+    
     // Phi1.3 Fetch
-    if (isPAL())
+    if (isPAL()) {
+        sFinalize(1);
+        pixelEngine.loadShiftRegister(1);
         pAccess(2);
-    else
+    } else {
         sSecondAccess(1);
-
+    }
+    
     // Phi2.1 Rasterline interrupt
     // Phi2.2 Sprite logic
     // Phi2.3 VC/RC logic
@@ -1928,11 +2025,16 @@ VIC::cycle63()
     yCounterEqualsIrqRasterline = (yCounter == rasterInterruptLine());
         
     // Phi1.2 Draw
+    // pixelEngine.drawSprites();
+    
     // Phi1.3 Fetch
-    if (isPAL())
+    if (isPAL()) {
         sSecondAccess(2);
-    else
+    } else {
+        sFinalize(1);
+        pixelEngine.loadShiftRegister(1);
         pAccess(2);
+    }
     
     // Phi2.1 Rasterline interrupt
     // Phi2.2 Sprite logic
@@ -1991,7 +2093,11 @@ VIC::cycle65() 	// NTSC only
     yCounterEqualsIrqRasterline = (yCounter == rasterInterruptLine());
 
     // Phi1.2 Draw
+    // pixelEngine.drawSprites();
+    
     // Phi1.3 Fetch
+    sFinalize(2);
+    pixelEngine.loadShiftRegister(2);
     pAccess(3);
     
     // Phi2.1 Rasterline interrupt

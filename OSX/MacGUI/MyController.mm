@@ -29,7 +29,17 @@
 + (void)initialize {
 	
 	NSLog(@"MyController::initialize");
-	[self registerStandardDefaults];	
+    
+    // Register standard defaults
+    [self registerStandardDefaults];
+
+    // Change working directory to the main bundle ressource path. We may find some ROMs there...
+    NSBundle* mainBundle = [NSBundle mainBundle];
+    NSString *path = [mainBundle resourcePath];
+    if (chdir([path UTF8String]) != 0)
+        NSLog(@"WARNING: Could not change working directory.");
+    else
+        NSLog(@"New base directory ist %@", path);
 }
 
 - (void)dealloc
@@ -55,61 +65,25 @@
 	[c64 kill];
 	c64 = nil;
 	[timerLock unlock];
-	
-	delete joystickManager;
 }
 
 - (void)awakeFromNib
 {	
-	NSLog(@"MyController::awakeFromNib");
-	
-	// Change working directory to the main bundle ressource path. We may find some ROMs there...
-	NSBundle* mainBundle = [NSBundle mainBundle];
-	NSString *path = [mainBundle resourcePath];
-	if (chdir([path UTF8String]) != 0)
-		NSLog(@"WARNING: Could not change working directory.");
-
-	// Bind virtual C64 to other object
-	[[self document] setC64:c64];
-	
-    // Add bottom bar
-    [[self window] setAutorecalculatesContentBorderThickness:YES forEdge:NSMinYEdge];
-    [[self window] setContentBorderThickness:32.0 forEdge: NSMinYEdge];
-    
-	// Joystick handling
-	joystickManager = new JoystickManager(c64);
-	joystickManager->Initialize();
-	
-	// Update some toolbar icons
-	[self setupToolbarIcons];
-		
-	// Create and bind number formatters
-	[self setHexadecimalAction:self];
-	
-	// Setup table views
-	[cpuTableView setController:self];
-	[memTableView setController:self];
-	[cheatboxImageBrowserView setController:self];
-	
-	// Create timer and speedometer
-	timerLock = [[NSLock alloc] init];
-	timer = [NSTimer scheduledTimerWithTimeInterval:(1.0f/6.0f) 
-											 target:self 
-										   selector:@selector(timerFunc) 
-										   userInfo:nil repeats:YES];
-	speedometer = [[Speedometer alloc] init];
-    fps = PAL_REFRESH_RATE;
-    mhz = CPU::CLOCK_FREQUENCY_PAL / 100000;
-
-	NSLog(@"GUI is initialized, timer is running");
+    NSLog(@"MyController::awakeFromNib");
 }
 
 - (void)windowDidLoad
 {
     NSLog(@"MyController::windowDidLoad");
+    NSLog(@"    window   = %@", [self window]);
+    NSLog(@"    document = %@", [self document]);
 
-    NSWindow *window = [self window];
-
+    // Let the document know where the virtual C64 resides
+    [[self document] setC64:c64];
+    
+    // Setup window properties
+    [self configureWindow];
+    
     // Enable auto-save for window coordinates
     [[[self window] windowController] setShouldCascadeWindows:NO];
     [[self window] setFrameAutosaveName:@"dirkwhoffmann.de.virtualC64.window"];
@@ -119,7 +93,7 @@
     [self loadVirtualMachineUserDefaults];
     
     // Enable fullscreen mode
-    [window setCollectionBehavior:NSWindowCollectionBehaviorFullScreenPrimary];
+    [[self window] setCollectionBehavior:NSWindowCollectionBehaviorFullScreenPrimary];
     
 	// Launch emulator
 	[c64 run];
@@ -127,6 +101,36 @@
     // Get metal running
     [metalScreen setupMetal];
     NSLog(@"Metal is up and running");
+}
+
+- (void)configureWindow
+{
+    // Add bottom bar
+    [[self window] setAutorecalculatesContentBorderThickness:YES forEdge:NSMinYEdge];
+    [[self window] setContentBorderThickness:32.0 forEdge: NSMinYEdge];
+    
+    // Update some toolbar icons
+    [self setupToolbarIcons];
+    
+    // Create and bind number formatters
+    [self setHexadecimalAction:self];
+    
+    // Setup table views
+    [cpuTableView setController:self];
+    [memTableView setController:self];
+    [cheatboxImageBrowserView setController:self];
+    
+    // Create timer and speedometer
+    timerLock = [[NSLock alloc] init];
+    timer = [NSTimer scheduledTimerWithTimeInterval:(1.0f/6.0f)
+                                             target:self
+                                           selector:@selector(timerFunc)
+                                           userInfo:nil repeats:YES];
+    speedometer = [[Speedometer alloc] init];
+    fps = PAL_REFRESH_RATE;
+    mhz = CPU::CLOCK_FREQUENCY_PAL / 100000;
+    
+    NSLog(@"NSTimer is running. Window is now listening to emulator messages.");
 }
 
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification
@@ -201,7 +205,7 @@
 
 + (void)registerStandardDefaults
 {
-	// NSLog(@"MyController::Registering standard user defaults");
+	NSLog(@"MyController::registerStandardDefaults");
 	
 	NSMutableDictionary *defaultValues = [NSMutableDictionary dictionary];
 	
@@ -261,7 +265,7 @@
 
 - (void)loadUserDefaults
 {
-	NSLog(@"MyController::Loading emulator user defaults");
+	NSLog(@"MyController::loadUserDefaults");
 	
 	NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
 			
@@ -301,7 +305,7 @@
 
 - (void)loadVirtualMachineUserDefaults
 {
-    NSLog(@"MyController::Loading virtual machine user defaults");
+    NSLog(@"MyController::loadVirtualMachineUserDefaults");
     
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     
@@ -330,7 +334,7 @@
 
 - (void)saveUserDefaults
 {
-	NSLog(@"MyController::Saving emulator user defaults");
+	NSLog(@"MyController::saveUserDefaults");
 	
 	NSUserDefaults *defaults;
 	
@@ -371,7 +375,7 @@
 
 - (void)saveVirtualMachineUserDefaults
 {
-    NSLog(@"MyController::Saving virtual machine user defaults");
+    NSLog(@"MyController::saveVirtualMachineUserDefaults");
     
     NSUserDefaults *defaults;
     
@@ -428,7 +432,21 @@
 	while ((message = [c64 message]) != NULL) {
 		[self processMessage:message];
 	}
-	
+    
+    // Update tape progress icon
+    // Note: The tape progress icon is not switched on or off by a "push" message, because
+    // some games continously switch on and off the datasette motor. This would quickly
+    // overflow the message queue.
+    if ([[c64 datasette] motor] != [c64 tapeBusIsBusy]) {
+        if ([[c64 datasette] motor] && [[c64 datasette] playKey]) {
+            [tapeProgress startAnimation:nil];
+            [c64 setTapeBusIsBusy:YES];
+        } else {
+            [tapeProgress stopAnimation:nil];
+            [c64 setTapeBusIsBusy:NO];
+        }
+    }
+        
 	// Refresh debug panel if open
 	if ([c64 isRunning] && ([debugPanel state] == NSDrawerOpenState || [debugPanel state] == NSDrawerOpeningState)) {
 		[self refresh];
@@ -470,9 +488,9 @@
 		case MSG_ROM_COMPLETE:
 			
 			// Close ROM dialog if open
-			if (romDialog) {					
-				[NSApp endSheet:romDialog];
-				[romDialog orderOut:nil];
+			if (romDialog) {
+                [romDialog orderOut:nil];
+                [[self window] endSheet:romDialog returnCode:NSModalResponseCancel];
 				romDialog = NULL;
 			}
 
@@ -493,8 +511,14 @@
             [metalScreen blendIn];
             [metalScreen setDrawC64texture:true];
 
+            // Check for attached tape
+            if ([[self document]  attachedTape]) {
+                NSLog(@"Found attached tape");
+                [self showTapeDialog];
+            }
+
 			// Check for attached archive
-			if ([[self document] archive]) {
+			if ([[self document] attachedArchive]) {
                 NSLog(@"Found attached archive");
                 [self showMountDialog];
             }
@@ -536,15 +560,16 @@
 			break;
 
         case MSG_WARP:
+        case MSG_ALWAYS_WARP:
+            if ([c64 alwaysWarp]) {
+                [warpIcon setImage:[NSImage imageNamed:@"pin_red"]];
+            } else if ([c64 warp]) {
+                [warpIcon setImage:[NSImage imageNamed:@"clock_red"]];
+            } else {
+                [warpIcon setImage:[NSImage imageNamed:@"clock_green"]];
+            }
             break;
-            
-		case MSG_ALWAYS_WARP:
-            if (msg->i)
-                [warpMode setImage:[NSImage imageNamed:@"slow"]];
-            else
-                [warpMode setImage:[NSImage imageNamed:@"fast"]];
-            break;
-			
+            			
 		case MSG_LOG:
 			break;
 			
@@ -564,8 +589,8 @@
             break;
 
 		case MSG_VC1541_DISK:
-			[drive setHidden:!msg->i];
-			[eject setHidden:!msg->i];
+			[driveIcon setHidden:!msg->i];
+			[driveEject setHidden:!msg->i];
             break;
 			
         case MSG_VC1541_DISK_SOUND:
@@ -583,6 +608,7 @@
 				[redLED setImage:[NSImage imageNamed:@"LEDred"]];
 			else
 				[redLED setImage:[NSImage imageNamed:@"LEDgray"]];
+            [redLED setNeedsDisplay];
 			break;
 			
 		case MSG_VC1541_DATA:
@@ -593,8 +619,6 @@
 			break;
 			
 		case MSG_VC1541_MOTOR:
-			break;
-
         case MSG_VC1541_HEAD:
             break;
             
@@ -617,6 +641,18 @@
 			[cartridgeEject setHidden:!msg->i];			
 			break;
 
+        case MSG_VC1530_TAPE:
+            [tapeIcon setHidden:!msg->i];
+            [tapeEject setHidden:!msg->i];
+            break;
+
+        case MSG_VC1530_PLAY:
+             break;
+
+        case MSG_VC1530_PROGRESS:
+            [mediaDialog update];
+            break;
+            
         case MSG_JOYSTICK_ATTACHED:
         case MSG_JOYSTICK_REMOVED:
             [self validateJoystickItems];
@@ -780,25 +816,19 @@
 // Action methods (main window area)
 // --------------------------------------------------------------------------------
 
-// Simulation speed
-
-- (IBAction)warpAction:(id)sender
+- (IBAction)driveAction:(id)sender
 {
-	NSLog(@"warpAction");	
-	
-	NSUndoManager *undo = [self undoManager];
-	[[undo prepareWithInvocationTarget:self] warpAction:@((int)![c64 warp])];
-	if (![undo isUndoing]) [undo setActionName:@"Native speed"];
-	
-	[c64 setAlwaysWarp:![c64 alwaysWarp]];
-	[self refresh];
+    NSLog(@"Drive action...");
+    if ([[c64 iec] isDriveConnected]) {
+        [[c64 iec] disconnectDrive];
+    } else {
+        [[c64 iec] connectDrive];
+    }
 }
 
-// Disk drive
-
-- (IBAction)ejectAction:(id)sender
+- (IBAction)driveEjectAction:(id)sender
 {
-    NSLog(@"ejectAction");
+    NSLog(@"driveEjectAction");
 
     if (![[c64 vc1541] DiskModified]) {
         [[c64 vc1541] ejectDisk];
@@ -824,7 +854,7 @@
             [[c64 vc1541] ejectDisk];
         } else {
             NSLog(@"Export dialog cancelled. Ask again...");
-            [self ejectAction:sender];
+            [self driveEjectAction:sender];
         }
     }
 
@@ -838,24 +868,31 @@
     }
 }
 
-- (IBAction)driveAction:(id)sender
+- (IBAction)tapeEjectAction:(id)sender
 {
-	NSLog(@"Drive action...");
-	if ([[c64 iec] isDriveConnected]) {
-        [[c64 iec] disconnectDrive];
-    } else {
-		[[c64 iec] connectDrive];
-	}
+    NSLog(@"tapeEjectAction");
+    [[c64 datasette] ejectTape];
+    // [[self document] setTape:NULL];
 }
-
-// Cartridge
 
 - (IBAction)cartridgeEjectAction:(id)sender
 {
-	NSLog(@"cartridgeEjectAction");	
+	NSLog(@"cartridgeEjectAAction");
 	[c64 detachCartridge];
 	[[self document] setCartridge:NULL];
 	[c64 reset];
+}
+
+- (IBAction)alwaysWarpAction:(id)sender
+{
+    NSLog(@"alwaysWarpAction");
+    
+    NSUndoManager *undo = [self undoManager];
+    [[undo prepareWithInvocationTarget:self] alwaysWarpAction:@((int)![c64 warp])];
+    if (![undo isUndoing]) [undo setActionName:@"Native speed"];
+    
+    [c64 setAlwaysWarp:![c64 alwaysWarp]];
+    [self refresh];
 }
 
 
@@ -881,138 +918,77 @@
 
 - (bool)showPropertiesDialog
 {
-    // Initialize dialog
     [propertiesDialog initialize:self];
-
-    // Open sheet
-#if 0
-    [[[self document] windowForSheet] beginSheet:propertiesDialog
-                               completionHandler:^(NSModalResponse returnCode) {
-                                   NSLog(@"completionHandler called");
-                               }];
-#endif
-    
-    [NSApp beginSheet:propertiesDialog
-       modalForWindow:[[self document] windowForSheet]
-        modalDelegate:self
-       didEndSelector:NULL
-          contextInfo:NULL];
+    [[self window] beginSheet:propertiesDialog completionHandler:nil];
     
     return YES;
 }
 
 - (IBAction)cancelPropertiesDialog:(id)sender
 {
-	// Hide sheet
-	[propertiesDialog orderOut:sender];
-	
-	// Return to normal event handling
-    // [[[self document] windowForSheet] endSheet:[self window] returnCode:NSModalResponseCancel];
-    [NSApp endSheet:propertiesDialog returnCode:1];
+	[propertiesDialog orderOut:sender]; // Hide sheet
+    [[self window] endSheet:propertiesDialog returnCode:NSModalResponseCancel];
 }
 
 - (bool)showHardwareDialog
 {
-    // The hardware dialog required the disk name as argument (if any disk is present).
-    // As the name is not directly acessible, we first convert the disk contents to an
-    // archive, pick the name, and delete the archive. A NULL pointer is passed to
-    // the hardware dialog, if no disk is present.
-    
-    NSString *name = NULL;
-    unsigned files = 0;
-    if ([[c64 vc1541] hasDisk]) {
-        D64Archive *archive = [[c64 vc1541] archiveFromDrive];
-        NSLog(@"Archive found");
-        if (archive != NULL) {
-            name = [NSString stringWithFormat:@"%s", archive->getName()];
-            files = archive->getNumberOfItems();
-            delete archive;
-        }
-    }
-    
-    // Initialize dialog
-    [hardwareDialog initialize:self archiveName:name noOfFiles:files];
-    
-    // Open sheet
-    [NSApp beginSheet:hardwareDialog
-       modalForWindow:[[self document] windowForSheet]
-        modalDelegate:self
-       didEndSelector:NULL
-          contextInfo:NULL];
-    
+    [hardwareDialog initialize:self];
+    [[self window] beginSheet:hardwareDialog completionHandler:nil];
+
     return YES;
 }
 
 - (IBAction)cancelHardwareDialog:(id)sender
 {
-    // Hide sheet
     [hardwareDialog orderOut:sender];
+    [[self window] endSheet:hardwareDialog returnCode:NSModalResponseCancel];
+}
+
+- (bool)showMediaDialog
+{
+    [mediaDialog initialize:self];
+    [[self window] beginSheet:mediaDialog completionHandler:nil];
     
-    // Return to normal event handling
-    [NSApp endSheet:hardwareDialog returnCode:1];
+    return YES;
+}
+
+- (IBAction)cancelMediaDialog:(id)sender
+{
+    [mediaDialog orderOut:sender]; // Hide sheet
+    [[self window] endSheet:mediaDialog returnCode:NSModalResponseCancel];
 }
 
 - (bool)showRomDialog:(Message *)msg
 {
-    // Initialize dialog
     [romDialog initialize:msg->i];
-
-    // Open sheet
-    [NSApp beginSheet:romDialog
-       modalForWindow:[[self document] windowForSheet]
-        modalDelegate:self
-       didEndSelector:NULL
-          contextInfo:NULL];
+    [[self window] beginSheet:romDialog completionHandler:nil];
 
     return YES;
 }
 
 - (IBAction)cancelRomDialog:(id)sender
 {
-	// Hide sheet
-	[romDialog orderOut:sender];
-	
-	// Exit
-	[[NSApplication sharedApplication] terminate: nil];
-	
-	// OLD BEHAVIOUR
-	// Return to normal event handling
-	// [NSApp endSheet:romDialog returnCode:1];
+    [romDialog orderOut:sender]; // Hide sheet
+    [[self window] endSheet:romDialog returnCode:NSModalResponseCancel];
+	[NSApp terminate: nil]; // Exit
 }
 
 - (bool)showMountDialog
-{
+{    
     // Only proceed if a an archive is present
-	if (![[self document] archive])
+	if (![[self document] attachedArchive])
 		return NO;
 	
-    // Initialize dialog
-    [mountDialog initializeAsMountDialog:[[self document] archive] c64proxy:c64];
-
-    // Open sheet
-	[NSApp beginSheet:mountDialog
-	   modalForWindow:[[self document] windowForSheet]
-		modalDelegate:self
-	   didEndSelector:NULL
-		  contextInfo:NULL];
-	
+    [mountDialog initialize:[[self document] attachedArchive] c64proxy:c64];
+    [[self window] beginSheet:mountDialog completionHandler:nil];
+    
 	return YES;
 }
 
 - (IBAction)cancelMountDialog:(id)sender
 {
-    bool doEject = [mountDialog doEjectOnCancel];
-    
-	// Hide sheet
-	[mountDialog orderOut:sender];
-	
-	// Return to normal event handling
-	[NSApp endSheet:mountDialog returnCode:1];
-    
-    // Eject disk if requested
-    if (doEject) {
-        [[c64 vc1541] ejectDisk];
-    }
+    [mountDialog orderOut:sender]; // Hide sheet
+    [[self window] endSheet:mountDialog returnCode:NSModalResponseCancel];
 }
 
 - (IBAction)endMountDialog:(id)sender
@@ -1032,40 +1008,82 @@
     }
     
 	// Hide sheet
-	[mountDialog orderOut:sender];
-	
-	// Return to normal event handling
-	[NSApp endSheet:mountDialog returnCode:1];
+	[mountDialog orderOut:sender]; // Hide sheet
+    [[self window] endSheet:mountDialog returnCode:NSModalResponseCancel];
 	
 	// Mount image if requested
     if (doMount) {
-        if (![c64 mountArchive:[[self document] archive]]) {
+        if (![c64 mountArchive:[[self document] attachedArchive]]) {
             NSLog(@"FAILED TO MOUNT ARCHIVE");
         }
     }
-    
+
     // Flash data if requested
     if (doFlash) {
-        [c64 flushArchive:[[self document] archive] item:[mountDialog selection]];
+        [c64 flushArchive:[[self document] attachedArchive] item:[mountDialog selection]];
     }
     
     // Type command if requested
     if (doType) {
-        usleep(100000);
-        [[c64 keyboard] typeText:textToType];
-        [[c64 keyboard] typeText:@"\n"];
+        [[c64 keyboard] typeText:[NSString stringWithFormat:@"%@\n", textToType] withDelay:500000];
     }
 }
 
+- (bool)showTapeDialog
+{
+    // Only proceed if a a tape image is present
+    if (![[self document] attachedTape])
+        return NO;
+    
+    [tapeDialog initialize:[[self document] attachedTape] c64proxy:c64];
+    [[self window] beginSheet:tapeDialog completionHandler:nil];
+    
+    return YES;
+}
+
+- (IBAction)cancelTapeDialog:(id)sender
+{
+    [tapeDialog orderOut:sender]; // Hide sheet
+    [[self window] endSheet:tapeDialog returnCode:NSModalResponseCancel];
+}
+
+- (IBAction)endTapeDialog:(id)sender
+{
+    NSString *textToType = @"LOAD\n";
+    bool doAutoType = [tapeDialog doAutoType];
+    bool doPressPlay = [tapeDialog doPressPlay];
+    
+    NSLog(@"Should type:  %ld (%@)", (long)doAutoType, textToType);
+    NSLog(@"Should press play: %ld", (long)doPressPlay);
+    
+    // Rotate C64 screen
+    [metalScreen rotate];
+    
+    // Hide sheet
+    [tapeDialog orderOut:sender];
+    [[self window] endSheet:tapeDialog returnCode:NSModalResponseCancel];
+    
+    // Insert tape into datasette
+    [c64 insertTape:[[self document] attachedTape]];
+    
+    // Type command if requested
+    if (doAutoType) {
+        [[c64 keyboard] typeText:textToType withDelay:500000];
+    }
+    
+    if (doAutoType && doPressPlay) {
+        dispatch_async(dispatch_get_global_queue( DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),
+                       ^{ usleep(400000); [[c64 datasette] pressPlay]; });
+    }
+}
 
 - (BOOL)exportToD64:(NSString *)path
 {
     NSLog(@"Writing drive contents to D64 archive in %@...",path);
 
     // Determine full destination path
-    NSString *archivePath = [NSString stringWithFormat:@"%s", [[self document] archive]->getPath()];
+    NSString *archivePath = [[[self document] attachedArchive] getPath];
     NSString *archiveName = [[archivePath lastPathComponent] stringByDeletingPathExtension];
-    
     NSString *proposedName = [path stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.D64", archiveName]];
     
     for (unsigned i = 2; i < 256; i++) {
@@ -1107,14 +1125,34 @@
 
 - (void)keyDown:(NSEvent *)event
 {
-	// Pass all keyboard events to C64
+	// Pass all keyboard events to the metal view
     [metalScreen keyDown:event];
 }
 
 - (void)keyUp:(NSEvent *)event
 {
-	// Pass all keyboard events to C64
+	// Pass all keyboard events to the metal view
     [metalScreen keyUp:event];
+}
+
+// --------------------------------------------------------------------------------
+//                                      Paste
+// --------------------------------------------------------------------------------
+
+
+- (void)paste:(id)sender
+{
+    NSPasteboard *gpBoard;
+    NSString *text;
+    
+    
+    gpBoard = [NSPasteboard generalPasteboard];
+    if (!(text = [gpBoard stringForType:NSStringPboardType])) {
+        NSLog(@"Paste failed");
+        return;
+    }
+    
+    [[c64 keyboard] typeText:text];
 }
 
 

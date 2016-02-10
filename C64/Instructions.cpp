@@ -25,40 +25,78 @@ extern unsigned dirkcnt;
 // Cycle 0
 void 
 CPU::fetch() {
-	    
-    bool doNMI = false, doIRQ = false;
-	
+    
 	PC_at_cycle_0 = PC;
 	
 	// Check interrupt lines
-    if (interruptsPending) {
+    // if (interruptsPending) {
+    if (1) {
     
         if (nmiEdge && NMILineRaisedLongEnough()) {
             if (tracingEnabled())
                 debug(1, "NMI (source = %02X)\n", nmiLine);
             nmiEdge = false;
             next = &CPU::nmi_2;
-            doNMI = true;
             return;
 
         } else if (irqLine && !IRQsAreBlocked() && IRQLineRaisedLongEnough()) {
             if (tracingEnabled())
                 debug(1, "IRQ (source = %02X)\n", irqLine);
             next = &CPU::irq_2;
-            doIRQ = true;
             return;
         }
     }
-    
-    // Execute fetch phase  
+
+    /*
+    if (tracingEnabled() && !rdyLine) {
+        printf("CPU blocked: spriteDmaOnOff:%02X\n", c64->vic->spriteDmaOnOff);
+    }
+    */
+
+    // Execute fetch phase
     FETCH_OPCODE
     next = actionFunc[opcode];
 
-	// Disassemble command if requested
-	if (tracingEnabled()) {
-		debug(1, "%s\n", disassemble());
-	}
-	
+    /*
+    static int debugcnt = 0;
+    if (isC64CPU()) {
+        if (debugcnt == 0 && c64->vic->spriteIsEnabled(5) && c64->rasterline == 50) {
+            debugcnt++; //debugging ON
+            setTraceMode(true);
+            c64->vic->setTraceMode(true);
+        }
+        
+        if (debugcnt > 0 && debugcnt < 300) {
+            debugcnt++;
+            printf("Rasterline: %d Cycle: %d rdyLine: %d BA: %d\n", c64->rasterline, c64->rasterlineCycle,
+                   rdyLine,c64->vic->BAlow);
+        }
+        
+        if (debugcnt >= 300) {
+            setTraceMode(false); // debugging OFF
+            c64->vic->setTraceMode(false);
+        }
+    }
+    */
+    
+    // Disassemble command if requested
+    if (tracingEnabled()) {
+        debug(1, "%s\n", disassemble());
+    }
+    
+    /*
+    if (PC_at_cycle_0 == 0x8CA) {
+        if (debugcnt++ < 100) {
+            printf("0x8CA: viccycle = %d (D015) = %02X\n", c64->rasterlineCycle, c64->vic->iomem[0x15]);
+        }
+    }
+    if (PC_at_cycle_0 == 0x8CD) {
+        if (debugcnt++ < 100) {
+            printf("       viccycle = %d (D015) = %02X\n", c64->rasterlineCycle, c64->vic->iomem[0x15]);
+        }
+    }
+    */
+    
 	// Check breakpoint tag
 	if (breakpoint[PC_at_cycle_0] != NO_BREAKPOINT) {
 		if (breakpoint[PC_at_cycle_0] & SOFT_BREAKPOINT) {
@@ -69,41 +107,6 @@ CPU::fetch() {
 		}
 		debug(1, "Breakpoint reached\n");
 	}
-    
-
-    // DIRK DEBUG
-    
-    /*
-    if (!isC64CPU() && PC_at_cycle_0 == 0xFAC7) {
-        fprintf(stderr, "Jobroutine zum Formatieren einer Diskette\n");
-    }
-    */
-    
-    /*
-     if (isC64CPU && dirktrace == 0 && PC == 0x0879) {
-     dirktrace = 1; // ON
-     // c64->mem->ram[0x0930] = 0x2B;
-     // c64->mem->ram[0x0931] = 0x17;
-     }
-     */
-    
-    /*
-     if (isC64CPU && dirktrace == 1)
-     dirkcnt++;
-     */
-    
-    /*
-     if (isC64CPU && dirkcnt > 10000) {
-     dirktrace = 2; // OFF
-     }
-     */
-    
-    /*
-     if (isC64CPU && dirktrace == 1) { // && c64->vic->getScanline() == 77) {
-     printf("%d: %s\n",PC-1, disassemble());
-     }
-     */
-
 }
 
 
@@ -239,9 +242,6 @@ CPU::registerIllegalInstructions()
 	registerCallback(0x5B, "SRE*", ADDR_ABSOLUTE_Y, &CPU::SRE_absolute_y);
 	
 	registerCallback(0x9B, "TAS*", ADDR_ABSOLUTE_Y, &CPU::TAS_absolute_y);
-
-    // Artifical instruction to handle the fast loader
-    registerCallback(0xF2, "???", ADDR_IMPLIED, &CPU::TRP);
 }
 
 	
@@ -1497,10 +1497,10 @@ void CPU::BVC_relative()
 {	
 	READ_IMMEDIATE;
 
-    if (chipModel == MOS6502 /* Drive CPU */ && !c64->floppy->getBitAccuracy()) {
+    if (chipModel == MOS6502 /* Drive CPU */ && !c64->floppy.getBitAccuracy()) {
         
         // Special handling for the VC1541 CPU. Taken from Frodo
-        if (!((c64->floppy->via2.io[12] & 0x0E) == 0x0E || getV())) {
+        if (!((c64->floppy.via2.io[12] & 0x0E) == 0x0E || getV())) {
             next = &CPU::BVC_relative_2;
         } else {
             DONE;
@@ -1546,10 +1546,10 @@ void CPU::BVS_relative()
 {	
 	READ_IMMEDIATE;
     
-    if (chipModel == MOS6502 /* Drive CPU */ && !c64->floppy->getBitAccuracy()) {
+    if (chipModel == MOS6502 /* Drive CPU */ && !c64->floppy.getBitAccuracy()) {
         
         // Special handling for the VC1541 CPU. Taken from Frodo
-        if ((c64->floppy->via2.io[12] & 0x0E) == 0x0E || getV()) {
+        if ((c64->floppy.via2.io[12] & 0x0E) == 0x0E || getV()) {
             next = &CPU::BVS_relative_2;
         } else {
             DONE;
@@ -4214,7 +4214,7 @@ void CPU::RTS()
 }
 void CPU::RTS_2()
 {
-	SP++;
+	IDLE_READ_IMMEDIATE_SP; // SP++;
 	next = &CPU::RTS_3;
 }
 void CPU::RTS_3()
@@ -4230,8 +4230,8 @@ void CPU::RTS_4()
 }
 void CPU::RTS_5()
 {
-	PC++;
-	callStackPointer--;
+    IDLE_READ_IMMEDIATE;
+	// callStackPointer--;
 	DONE;
 }
 
@@ -7044,98 +7044,6 @@ void CPU::LXA_immediate()
 	DONE;
 }
 
-// -------------------------------------------------------------------------------
-// Instruction: TRP
-//
-// Operation:   Artifical instruction to handle the fast loading code
-//
-// -------------------------------------------------------------------------------
-
-void CPU::TRP()
-{
-    uint8_t result;
-    uint8_t data = c64->mem->ram[0x95];
-    
-    if (!c64->mem->kernelIsPatched) {
-        JAM();
-        return;
-    }
- 
-    switch (PC - 1) {
-                
-        case 0xED23:
-            debug(2, "Fastloader: VC1541 <- ATTENTION (%02X)\n", data);
-            result = c64->iec->IECOutATN(data);
-            c64->mem->ram[0x90] |= result;
-            PC = 0xEDAB; // Continue with: CLI, RTS
-            break;
-            
-        case 0xED36:
-            debug(2, "Fastloader: VC1541 <- SECONDARY (%02X)\n", data);
-            result = c64->iec->IECOutSec(data);
-            c64->mem->ram[0x90] |= result;
-            PC = 0xEDAB; // Continue with: CLI, RTS
-            break;
-
-        case 0xED40:
-            debug(2, "Fastloader: VC1541 <- (%02X)\n", data);
-            result = c64->iec->IECOut(data, c64->mem->ram[0xa3] & 0x80);
-            c64->mem->ram[0x90] |= result;
-            // Continue at the end of the 'send byte from $95 on serial bus' routine
-            C = 0;
-            PC = 0xEDAC;
-            break;
-            
-        case 0xEE13:
-            result = c64->iec->IECIn(&c64->mem->ram[0xA4]);
-            // printf("%02X ", c64->mem->ram[0xA4]);
-            c64->mem->ram[0x90] |= result;
-            PC = 0xEE80; // Continue with: LDA $A4, CLI, CLC, RTS
-            break;
-
-        case 0xEDEF:
-            // printf("CPU::TRP(IECSetATN)\n");
-            debug(2, "Fastloader: VC1541 <- ASSERT ATTENTION\n");
-
-            // Nothing to simulate
-
-            PC = 0xEDFB; // Continue with: LDA #$5F ...
-            break;
-
-        case 0xEDBE:
-            debug(2, "Fastloader: VC1541 <- RELEASE ATTENTION\n");
-            
-            // Nothing to simulate
-
-            PC = 0xEDAC; // Continue with: RTS
-            break;
-
-        case 0xEDCC:
-            // printf("CPU::TRP(IECTurnaround)\n");
-            debug(2, "Fastloader: VC1541 <- TURNAROUND\n");
-            
-            // Nothing to simulate
-
-            PC = 0xEDAC; // Continue with: RTS
-            break;
-
-        case 0xEE03:
-            // printf("CPU::TRP(IECRelease)\n");
-            debug(2, "Fastloader: VC1541 <- RELEASE\n");
-            
-            // Nothing to simulate
-
-            PC = 0xEDAC; // Continue with: RTS
-            break;
-
-        default:
-            JAM();
-    }
-    
-    DONE; 
-}
-
-
 void ((CPU::*CPU::callbacks[])(void)) = {
 	
 &CPU::fetch,
@@ -7428,7 +7336,5 @@ void ((CPU::*CPU::callbacks[])(void)) = {
 &CPU::SRE_indirect_y, &CPU::SRE_indirect_y_2, &CPU::SRE_indirect_y_3, &CPU::SRE_indirect_y_4, &CPU::SRE_indirect_y_5, &CPU::SRE_indirect_y_6, &CPU::SRE_indirect_y_7,
 
 &CPU::TAS_absolute_y, &CPU::TAS_absolute_y_2, &CPU::TAS_absolute_y_3, &CPU::TAS_absolute_y_4,
-
-&CPU::TRP,
 NULL
 };

@@ -23,7 +23,17 @@
 - (BOOL)validateMenuItem:(NSMenuItem *)item;
 
 #pragma mark file menu
+
+/*! @brief   Action function for save screenshot feature
+ *  @details This method is called when the current emulator image is saved
+ *           to disk.
+ */
 - (IBAction)saveScreenshotDialog:(id)sender;
+
+/*! @brief   Action function for the quick save screenshot feature
+ *  @details A screenshot is taken is saved to a file on the users desktop.
+ */
+- (IBAction)quicksaveScreenshot:(id)sender;
 
 /*! @brief   Action function for export disk feature
  *  @details This method is called when exporting to archives that are capable of 
@@ -47,7 +57,10 @@
 - (IBAction)showStatusBar;
 - (IBAction)hideStatusBar;
 
+#pragma mark keyboard menu
 - (IBAction)runstopAction:(id)sender;
+- (IBAction)shiftRunstopAction:(id)sender;
+- (IBAction)restoreAction:(id)sender;
 - (IBAction)runstopRestoreAction:(id)sender;
 - (IBAction)commodoreKeyAction:(id)sender;
 - (IBAction)ClearKeyAction:(id)sender;
@@ -56,6 +69,11 @@
 - (IBAction)LoadDirectoryAction:(id)sender;
 - (IBAction)LoadFirstFileAction:(id)sender;
 - (IBAction)FormatDiskAction:(id)sender;
+
+#pragma mark peripherals menu
+- (IBAction)datasetteEjectAction:(id)sender;
+- (IBAction)datasettePressPlayAction:(id)sender;
+- (IBAction)datasettePressStopAction:(id)sender;
 
 #pragma mark debug menu
 - (IBAction)hideSpritesAction:(id)sender;
@@ -73,8 +91,8 @@
 - (IBAction)dumpC64CIA2:(id)sender;
 - (IBAction)dumpC64VIC:(id)sender;
 - (IBAction)dumpC64SID:(id)sender;
-- (IBAction)dumpC64Joystick1:(id)sender;
-- (IBAction)dumpC64Joystick2:(id)sender;
+- (IBAction)dumpC64JoystickA:(id)sender;
+- (IBAction)dumpC64JoystickB:(id)sender;
 - (IBAction)dumpC64ExpansionPort:(id)sender;
 - (IBAction)dumpC64Memory:(id)sender;
 - (IBAction)dumpVC1541:(id)sender;

@@ -24,13 +24,13 @@
 
 C64Memory::C64Memory()
 {	
-	name ="C64 memory";
-	debug (2, "  Creating main memory at address %p...\n", this);
+	setDescription("C64 memory");
+    
+	debug (3, "  Creating main memory at address %p...\n", this);
 		
 	charRomFile = NULL;
 	kernelRomFile = NULL;
 	basicRomFile = NULL;
-    kernelIsPatched = false;
     
     // Register snapshot items
     SnapshotItem items[] = {
@@ -49,7 +49,7 @@ C64Memory::C64Memory()
 
 C64Memory::~C64Memory()
 {
-	debug(2, "  Releasing main memory at address %p...\n", this);
+	debug(3, "  Releasing main memory at address %p...\n", this);
 }
 
 void C64Memory::reset()
@@ -57,11 +57,8 @@ void C64Memory::reset()
     VirtualComponent::reset();
     
     // Establish bindings
-    vic = c64->vic;
-    sid = c64->sid;
-    cia1 = c64->cia1;
-    cia2 = c64->cia2;
-    cpu = c64->cpu;
+    // sid = &c64->sid;
+    cpu = &c64->cpu;
     
 	// Initialize RAM (powerup pattern similar to Frodo and VICE)
     for (unsigned i = 0; i < sizeof(ram); i++)
@@ -198,41 +195,10 @@ C64Memory::loadKernelRom(const char *filename)
 	if (isKernelRom(filename)) {
 		kernelRomFile = strdup(filename);
 		flashRom(filename, 0xE000);
-        memcpy(unpatchedKernel, &rom[0xE000], 0x2000);
-        // patchKernel();
 		return true;
 	}
     
 	return false;
-}
-
-void
-C64Memory::patchKernel()
-{
-    debug(2, "Patching kernel ROM\n");
-    
-    // The idea of using a patched kernel has been taken from Frodo
-    // We also use the same special opcode (0xF2) here
-    
-    rom[0xED40] = 0xF2;	// IECOut
-    rom[0xED23] = 0xF2;	// IECOutATN
-    rom[0xED36] = 0xF2;	// IECOutSec
-    rom[0xEE13] = 0xF2;	// IECIn
-    rom[0xEDEF] = 0xF2;	// IECSetATN
-    rom[0xEDBE] = 0xF2;	// IECRelATN
-    rom[0xEDCC] = 0xF2;	// IECTurnaround
-    rom[0xEE03] = 0xF2;	// IECRelease
-    
-    kernelIsPatched = true;
-}
-
-void
-C64Memory::unpatchKernel()
-{
-    debug(2, "Restoring old kernel ROM\n");
-
-    memcpy(&rom[0xE000], unpatchedKernel, 0x2000);
-    kernelIsPatched = false;
 }
 
 
@@ -255,34 +221,11 @@ bool C64Memory::isValidAddr(uint16_t addr, MemoryType type)
 	}
 }
 
-uint8_t 
-C64Memory::peekRam(uint16_t addr) 
-{ 
-	return ram[addr];
-} 
-
-uint8_t 
-C64Memory::peekRom(uint16_t addr) 
-{ 
-	return rom[addr];
-} 
-
-#if 0
-uint8_t 
-C64Memory::peekCartridge(uint16_t addr)
-{
-	if (cartridge != NULL && cartridge->isRomAddr(addr))
-		return cartridge->peek(addr);
-    
-	return ram[addr];
-}
-#endif
-
 void 
 C64Memory::updatePeekPokeLookupTables()
 {
-    uint8_t EXROM = c64->expansionport->getExromLine() ? 0x10 : 0x00;
-    uint8_t GAME = c64->expansionport->getGameLine() ? 0x08 : 0x00;
+    uint8_t EXROM = c64->expansionport.getExromLine() ? 0x10 : 0x00;
+    uint8_t GAME = c64->expansionport.getGameLine() ? 0x08 : 0x00;
     
     uint8_t index = (cpu->getPortLines() & 0x07) | EXROM | GAME;
     
@@ -342,33 +285,33 @@ uint8_t C64Memory::peekIO(uint16_t addr)
 	if (addr <= 0xD3FF) {
 		// Note: Only the lower 6 bits are used for adressing the VIC I/O space
 		// Therefore, the VIC I/O memory repeats every 64 bytes
-		return vic->peek(addr & 0x003F);	
+		return c64->vic.peek(addr & 0x003F);
 	}
 	
 	// 0xD400 - 0xD7FF (SID)
 	if (addr <= 0xD7FF) {
 		// Note: Only the lower 5 bits are used for adressing the SID I/O space
 		// Therefore, the SID I/O memory repeats every 32 bytes
-		return sid->peek(addr & 0x001F);
+		return c64->sid.peek(addr & 0x001F);
 	}
 	
 	// 0xD800 - 0xDBFF (Color RAM)
 	if (addr <= 0xDBFF) {
-        return (colorRam[addr - 0xD800] & 0x0F) | (vic->getDataBus() & 0xF0);
+        return (colorRam[addr - 0xD800] & 0x0F) | (c64->vic.getDataBus() & 0xF0);
 	}
 	
 	// 0xDC00 - 0xDCFF (CIA 1)
 	if (addr <= 0xDCFF) {
 		// Note: Only the lower 4 bits are used for adressing the CIA I/O space
 		// Therefore, the CIA I/O memory repeats every 16 bytes
-		return cia1->peek(addr & 0x000F);
+		return c64->cia1.peek(addr & 0x000F);
 	}
 	
 	// 0xDD00 - 0xDDFF (CIA 2)
 	if (addr <= 0xDDFF) {
 		// Note: Only the lower 4 bits are used for adressing the CIA I/O space
 		// Therefore, the CIA I/O memory repeats every 16 bytes
-		return cia2->peek(addr & 0x000F);
+		return c64->cia2.peek(addr & 0x000F);
 	}
 	
 	// 0xDE00 - 0xDEFF (I/O area 1)
@@ -382,7 +325,7 @@ uint8_t C64Memory::peekIO(uint16_t addr)
             Lesen von offenen Adressen liefert nämlich auf vielen C64 das zuletzt vom
             VIC gelesene Byte zurück!)" [C.B.] */
         
-		return vic->getDataBus();
+		return c64->vic.getDataBus();
 	}
 
 	assert(false);
@@ -407,14 +350,14 @@ uint8_t C64Memory::peek(uint16_t addr)
         case M_CRTLO:
         case M_CRTHI:
 
-            if (c64->expansionport->romIsBlendedIn(addr))
-                return c64->expansionport->peek(addr);
+            if (c64->expansionport.romIsBlendedIn(addr))
+                return c64->expansionport.peek(addr);
             else
                 return ram[addr];
             
         case M_PP:
             
-            uint8_t dir, ext;
+            uint8_t dir, ext, result;
             
             if (addr > 0x0001)
                 return ram[addr];
@@ -422,8 +365,13 @@ uint8_t C64Memory::peek(uint16_t addr)
             // Processor port
             dir = cpu->getPortDirection();
             ext = cpu->getExternalPortBits();
-            return (addr == 0x0000) ? dir : (dir & cpu->getPort()) | (~dir & ext);
             
+            // Datasette (move to getExternalPortBits(?) after cleanup)
+            if (c64->datasette.getPlayKey()) ext &= 0xEF; else ext |= 0x10;
+            
+            result = (addr == 0x0000) ? dir : (dir & cpu->getPort()) | (~dir & ext);
+            return result;
+
         case M_NONE:
             // what happens if RAM is unmapped?
             return ram[addr];
@@ -439,31 +387,13 @@ uint8_t C64Memory::peek(uint16_t addr)
 //                                    Poke
 // --------------------------------------------------------------------------------
 
-void C64Memory::pokeRam(uint16_t addr, uint8_t value)             
-{ 
-	ram[addr] = value;
-}
-
-void C64Memory::pokeRom(uint16_t addr, uint8_t value)             
-{ 
-#if 0
-    if (cartridge != NULL && cartridge->isRomAddr(addr)) {
-        cartridge->poke(addr, value);
-    } else {
-        rom[addr] = value;
-    }
-#endif
-    
-    rom[addr] = value;
-}
-
 void C64Memory::pokeIO(uint16_t addr, uint8_t value)
 {
 	// 0xD000 - 0xD3FF (VIC)
 	if (addr < 0xD400) {
 		// Note: Only the lower 6 bits are used for adressing the VIC I/O space
 		// Therefore, the VIC I/O memory repeats every 64 bytes
-		vic->poke(addr & 0x003F, value);
+		c64->vic.poke(addr & 0x003F, value);
 		return;
 	}
 	
@@ -471,7 +401,7 @@ void C64Memory::pokeIO(uint16_t addr, uint8_t value)
 	if (addr < 0xD800) {
 		// Note: Only the lower 5 bits are used for adressing the SID I/O space
 		// Therefore, the SID I/O memory repeats every 32 bytes
-		sid->poke(addr & 0x001F, value);
+		c64->sid.poke(addr & 0x001F, value);
 		return;
 	}
 
@@ -487,7 +417,7 @@ void C64Memory::pokeIO(uint16_t addr, uint8_t value)
 	if (addr < 0xDD00) {
 		// Note: Only the lower 4 bits are used for adressing the CIA I/O space
 		// Therefore, the VIC I/O memory repeats every 16 bytes
-		cia1->poke(addr & 0x000F, value);
+		c64->cia1.poke(addr & 0x000F, value);
 		return;
 	}
 	
@@ -495,7 +425,7 @@ void C64Memory::pokeIO(uint16_t addr, uint8_t value)
 	if (addr < 0xDE00) {
 		// Note: Only the lower 4 bits are used for adressing the CIA I/O space
 		// Therefore, the VIC I/O memory repeats every 16 bytes
-		cia2->poke(addr & 0x000F, value);
+		c64->cia2.poke(addr & 0x000F, value);
 		return;
 	}
 	
@@ -504,7 +434,7 @@ void C64Memory::pokeIO(uint16_t addr, uint8_t value)
 	if (addr < 0xE000) {
         // Some registers in this area trigger a bank switch in the
         // attached cartridge module. So we pass the value there...
-        c64->expansionport->poke(addr, value);
+        c64->expansionport.poke(addr, value);
         return;
 	}
 

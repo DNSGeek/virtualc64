@@ -18,20 +18,6 @@
 
 #import "C64GUI.h"
 
-static CVReturn MetalRendererCallback(CVDisplayLinkRef displayLink,
-                                      const CVTimeStamp *inNow,
-                                      const CVTimeStamp *inOutputTime,
-                                      CVOptionFlags flagsIn,
-                                      CVOptionFlags *flagsOut,
-                                      void *displayLinkContext)
-{
-    @autoreleasepool {
-        
-        return [(__bridge MyMetalView *)displayLinkContext getFrameForTime:inOutputTime flagsOut:flagsOut];
-        
-    }
-}
-
 @implementation MyMetalView(Setup)
 
 - (void)setupMetal
@@ -45,7 +31,8 @@ static CVReturn MetalRendererCallback(CVDisplayLinkRef displayLink,
     [self buildPipeline];
     
     [self reshapeWithFrame:[self frame]];
-    [self setupDisplayLink];
+    // [self setupDisplayLink];
+    enableMetal = true;
 }
 
 - (void)buildMetal
@@ -82,11 +69,15 @@ static CVReturn MetalRendererCallback(CVDisplayLinkRef displayLink,
 {
     NSLog(@"MyMetalView::buildTextures");
     
-    // Background
-    NSURL *url = [[NSWorkspace sharedWorkspace] desktopImageURLForScreen:[NSScreen mainScreen]];
-    NSImage *bgImage = [[NSImage alloc] initWithContentsOfURL:url];
-    NSImage *bgImageResized = [self expandImage:bgImage toSize:NSMakeSize(BG_TEXTURE_WIDTH,BG_TEXTURE_HEIGHT)];
-    bgTexture = [self textureFromImage:bgImageResized];
+    // Create bachground texture (a scaled down version of the current wallpaper)
+    NSImage *desktop = [self desktopAsImage];
+    NSImage *desktopResized = [self expandImage:desktop toSize:NSMakeSize(BG_TEXTURE_WIDTH,BG_TEXTURE_HEIGHT)];
+    bgTexture = [self textureFromImage:desktopResized];
+    
+    
+    // If the wallpaper could not be obtained, we fall back to an opaque texture.
+    if (!bgTexture)
+        bgTexture = [self defaultBackgroundTexture];
 
     // C64 screen (raw emulator data)
     MTLTextureDescriptor *textureDescriptor =
@@ -116,7 +107,7 @@ static CVReturn MetalRendererCallback(CVDisplayLinkRef displayLink,
     
     bypassFilter = [BypassFilter filterWithDevice:device library:library];
     smoothFilter = [SaturationFilter filterWithFactor:1.0 device:device library:library];
-    blurFilter = [BlurFilter filterWithRadius:2.0 device:device library:library];
+    blurFilter = [BlurFilter filterWithRadius:2 device:device library:library];
     saturationFilter = [SaturationFilter filterWithFactor:0.5 device:device library:library];
     sepiaFilter = [SepiaFilter filterWithDevice:device library:library];
     crtFilter = [CrtFilter filterWithDevice:device library:library];
@@ -237,10 +228,15 @@ static CVReturn MetalRendererCallback(CVDisplayLinkRef displayLink,
     if (!device)
         return;
     
+    // NSUInteger w = (layerWidth < 1) ? 512 : ((layerWidth > 2048) ? 2048 : layerWidth);
+    // NSUInteger h = (layerHeight < 1) ? 512 : ((layerHeight > 2048) ? 2048 : layerHeight);
+    NSUInteger w = (layerWidth < 1) ? 512 : ((layerWidth > 2048) ? layerWidth : layerWidth);
+    NSUInteger h = (layerHeight < 1) ? 512 : ((layerHeight > 2048) ? layerHeight : layerHeight);
+
     MTLTextureDescriptor *depthTexDesc =
     [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float
-                                                       width:(layerWidth == 0) ? 512 : layerWidth
-                                                      height:(layerHeight == 0) ? 512 : layerHeight
+                                                       width:w
+                                                      height:h
                                                    mipmapped:NO];
     {
         depthTexDesc.resourceOptions = MTLResourceStorageModePrivate;
@@ -314,43 +310,6 @@ static CVReturn MetalRendererCallback(CVDisplayLinkRef displayLink,
     }
 }
 
-// -----------------------------------------------------------------------------------------------
-//                                         Display link
-// -----------------------------------------------------------------------------------------------
-
-
-- (void)setupDisplayLink
-{
-    NSLog(@"MyMetalView::setupDisplayLink");
-    
-    CVReturn success;
-    
-    // Create display link for the main display
-    CVDisplayLinkCreateWithCGDisplay(kCGDirectMainDisplay, &displayLink);
-    NSAssert(displayLink != nil, @"Error: Can't create display link");
-    
-    // Set the current display of a display link
-    if ((success = CVDisplayLinkSetCurrentCGDisplay(displayLink, kCGDirectMainDisplay)) != 0) {
-        NSLog(@"CVDisplayLinkSetCurrentCGDisplay failed with return code %d", success);
-        CVDisplayLinkRelease(displayLink);
-        exit(0);
-    }
-    
-    // Set the renderer output callback function
-    if ((success = CVDisplayLinkSetOutputCallback(displayLink, &MetalRendererCallback, (__bridge void *)self)) != 0) {
-        NSLog(@"CVDisplayLinkSetOutputCallback failed with return code %d", success);
-        CVDisplayLinkRelease(displayLink);
-        exit(0);
-    }
-    
-    // Activates display link
-    if ((success = CVDisplayLinkStart(displayLink)) != 0) {
-        NSLog(@"CVDisplayLinkStart failed with return code %d", success);
-        CVDisplayLinkRelease(displayLink);
-        exit(0);
-    }
-}
-
 @end
 
 
@@ -363,7 +322,7 @@ vc64_matrix_identity()
     vector_float4 Z = { 0, 0, 1, 0 };
     vector_float4 W = { 0, 0, 0, 1 };
     
-    matrix_float4x4 identity = { X, Y, Z, W };
+    matrix_float4x4 identity = { {X, Y, Z, W} };
     
     return identity;
 }

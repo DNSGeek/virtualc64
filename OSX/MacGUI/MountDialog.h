@@ -28,6 +28,7 @@ class Archive;
     IBOutlet NSPopUpButton *loadOptions;
     IBOutlet NSTextField *headerText;
     IBOutlet NSTextField *warningText;
+    IBOutlet NSTextField *doubleClickText;
     IBOutlet NSImageView *diskIcon;
     IBOutlet NSBox *diskIconFrame;
     
@@ -37,15 +38,10 @@ class Archive;
     int loadOption;
     int selectedRow;
     
-    // Configuration
-    //bool showEjectButton;
-    //bool showCancelButton;
-
     // Todo items (when window closes)
     bool doMount;
     bool doFlash;
     bool doType;
-    bool doEjectOnCancel;
 }
 
 // @property(readonly) int loadOption;
@@ -53,12 +49,11 @@ class Archive;
 @property(readonly) bool doMount;
 @property(readonly) bool doFlash;
 @property(readonly) bool doType;
-@property(readonly) bool doEjectOnCancel;
 
 
 // Initialization
-- (void) _initialize:(Archive *)a c64proxy:(C64Proxy *)proxy;
-- (void) initializeAsMountDialog:(Archive *)a c64proxy:(C64Proxy *)proxy;
+- (void) _initialize:(ArchiveProxy *)a c64proxy:(C64Proxy *)proxy;
+- (void) initialize:(ArchiveProxy *)a c64proxy:(C64Proxy *)proxy;
 
 // Action methods
 - (IBAction)loadOptionsAction:(id)sender;

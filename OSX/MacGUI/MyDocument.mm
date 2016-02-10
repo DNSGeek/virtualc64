@@ -1,5 +1,5 @@
 /*
- * (C) 2006 - 2009 Dirk W. Hoffmann. All rights reserved.
+ * (C) 2006 - 2016 Dirk W. Hoffmann. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published byc64
@@ -22,7 +22,8 @@
 
 @synthesize c64;
 @synthesize snapshot;
-@synthesize archive;
+@synthesize attachedArchive;
+@synthesize attachedTape;
 @synthesize cartridge;
 
 - (void)makeWindowControllers
@@ -47,7 +48,7 @@
 	
     self = [super init];
 
-	archive = NULL;
+    attachedArchive = nil;
 	cartridge = NULL;
 		
 	return self;
@@ -55,7 +56,7 @@
 
 - (void)awakeFromNib
 {
-	NSLog(@"MyDocument::awakeFromNib");
+    NSLog(@"MyDocument::awakeFromNib");
 }
 
 - (BOOL)setSnapshotWithName:(NSString *)path
@@ -66,9 +67,33 @@
     return YES;
 }
 
+- (BOOL)setG64ArchiveWithName:(NSString *)path
+{
+    if (!(attachedArchive = [G64ArchiveProxy archiveFromG64File:path]))
+        return NO;
+    
+    return YES;
+}
+
+- (BOOL)setNIBArchiveWithName:(NSString *)path
+{
+    if (!(attachedArchive = [NIBArchiveProxy archiveFromNIBFile:path]))
+        return NO;
+    
+    return YES;
+}
+
+- (BOOL)setTAPArchiveWithName:(NSString *)path
+{
+    if (!(attachedTape = [TAPContainerProxy containerFromTAPFile:path]))
+        return NO;
+    
+    return YES;
+}
+
 - (BOOL)setArchiveWithName:(NSString *)path
 {
-	if (!(archive = D64Archive::archiveFromArbitraryFile([path UTF8String])))
+    if (!(attachedArchive = [D64ArchiveProxy archiveFromArbitraryFile:path]))
 		return NO;
 	
 	return YES;
@@ -135,7 +160,8 @@
 		return NO;
 	}
 	
-	V64Snapshot *s = [V64Snapshot snapshotFromC64:c64];
+    SnapshotProxy *s = [[SnapshotProxy alloc] init];
+    [c64 saveToSnapshot:s];
 	[s writeDataToFile:filename];
 	
 	return YES;
@@ -149,54 +175,75 @@
 	
     // Is it a snapshot?
     if (Snapshot::isSnapshot(name)) {
-
+        
         // Do the version numbers match?
         if (Snapshot::isSnapshot(name, V_MAJOR, V_MINOR, V_SUBMINOR)) {
-
+            
             if (![self setSnapshotWithName:filename]) {
                 NSLog(@"Error while reading snapshot\n");
                 return NO;
             }
             return YES;
         }
-    
+        
         [self showVersionNumberAlert];
-        return NO; 
+        return NO;
     }
     
+    // New code style. Use ProxyClasses
+    // Is it a T64 file?
 #if 0
-	if ([type isEqualToString:@"VC64"]) {
-		
-        if (![self setSnapshotWithName:filename]) {
-            NSLog(@"Error while reading snapshot\n");
-            return NO;
-        }		
-        return YES;
+    if ([T64ArchiveProxy isT64File:filename]) {
+        if ([self setArchiveWithName:filename]) return YES; else goto failure;
     }
 #endif
     
-    // Is it an archive?
-	if ([type isEqualToString:@"D64"] || [type isEqualToString:@"T64"] || [type isEqualToString:@"PRG"] || [type isEqualToString:@"P00"]) {
+    // Old code style. TODO: Change to new style (?!)...
+    switch (Container::typeOf([type UTF8String])) {
+            
+        case D64_CONTAINER:
+        case T64_CONTAINER:
+        case PRG_CONTAINER:
+        case P00_CONTAINER:
 		
-		if (![self setArchiveWithName:filename]) {
-			NSLog(@"Error while reading archive\n");
-			return NO;
-		}		
-		return YES;
-	}
-	
-    // Is it a cartridge?
-	if ([type isEqualToString:@"CRT"]) {
-		
-		if (![self setCartridgeWithName:filename]) {
-			NSLog(@"Error while reading cartridge\n");
-			return NO;
-		}
-		return YES;
-	}
-	
-	// Unknown type
-	return NO;
+            if ([self setArchiveWithName:filename])
+                return YES;
+            else break;
+            
+        case G64_CONTAINER:
+            
+            if ([self setG64ArchiveWithName:filename])
+                return YES;
+            else break;
+
+        case NIB_CONTAINER:
+            
+            if ([self setNIBArchiveWithName:filename])
+                return YES;
+            else break;
+
+        case TAP_CONTAINER:
+            
+            if ([self setTAPArchiveWithName:filename])
+                return YES;
+            else break;
+
+        case CRT_CONTAINER:
+
+            if ([self setCartridgeWithName:filename])
+                return YES;
+            else break;
+
+        default:
+
+            NSLog(@"Unsupported file type\n");
+            return NO;
+    }
+
+failure:
+
+    NSLog(@"Error while reading file\n");
+    return NO;
 }
 	
 - (BOOL)revertToSavedFromFile:(NSString *)filename ofType:(NSString *)type
@@ -208,7 +255,7 @@
 		return NO;
 	}
 			
-	V64Snapshot *reverted = [V64Snapshot snapshotFromFile:filename];
+	SnapshotProxy *reverted = [SnapshotProxy snapshotFromFile:filename];
 
 	if (!reverted) {
 		NSLog(@"Error while reverting to older snapshot\n");

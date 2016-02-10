@@ -20,8 +20,8 @@
 
 IEC::IEC()
 {
-  	name = "IEC";
-    debug(2, "  Creating IEC bus at address %p...\n", this);
+  	setDescription("IEC");
+    debug(3, "  Creating IEC bus at address %p...\n", this);
     
     // Register snapshot items
     SnapshotItem items[] = {
@@ -53,7 +53,7 @@ IEC::IEC()
 
 IEC::~IEC()
 {
-	debug(2, "  Releasing IEC bus...\n");
+	debug(3, "  Releasing IEC bus...\n");
 }
 
 void 
@@ -62,7 +62,7 @@ IEC::reset()
    VirtualComponent::reset();
     
     // Establish bindings
-    drive = c64->floppy;
+    drive = &c64->floppy;
     
     driveConnected = 1;
 	atnLine = 1;
@@ -200,7 +200,7 @@ void IEC::updateIecLines()
 			drive->c64->putMessage(MSG_VC1541_DATA, 1);
 			drive->c64->setWarp(drive->c64->getAlwaysWarp() || drive->c64->getWarpLoad());
 		}
-		busActivity = 10;
+		busActivity = 30;
 	}
 
 	if (signals_changed && tracingEnabled()) {

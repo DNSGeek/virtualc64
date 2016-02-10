@@ -18,8 +18,6 @@
 
 #import "C64GUI.h"
 
-NSRecursiveLock *lock = nil;
-
 @implementation MyMetalView {
     
     // Local metal objects
@@ -90,10 +88,9 @@ NSRecursiveLock *lock = nil;
 {
     NSLog(@"MyMetalView::awakeFromNib");
     
-    c64 = [c64proxy c64]; // DEPRECATED
+    // c64 = [c64proxy c64]; // DEPRECATED
     
-    // Create synchronization locks
-    if (!lock) lock = [NSRecursiveLock new];
+    // Create semaphore
     _inflightSemaphore = dispatch_semaphore_create(1);
     
     // Set initial scene position and drawing properties
@@ -106,7 +103,7 @@ NSRecursiveLock *lock = nil;
     currentAlpha = targetAlpha = 0.0; deltaAlpha = 0.0;
     
     // Properties
-    enableMetal = true; 
+    enableMetal = false;
     fullscreen = false;
     fullscreenKeepAspectRatio = true;
     drawInEntireWindow = false;
@@ -165,17 +162,6 @@ NSRecursiveLock *lock = nil;
 -(void)cleanup
 {
     NSLog(@"MyMetalView::cleanup");
-    
-    if (lock) [lock lock];
-    
-    if (displayLink) {
-        CVDisplayLinkStop(displayLink);
-        CVDisplayLinkRelease(displayLink);
-        displayLink = NULL;
-    }
-    
-    if (lock) [lock unlock];
-    lock = NULL; 
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -184,7 +170,7 @@ NSRecursiveLock *lock = nil;
 
 - (void)updateScreenGeometry
 {
-    if (c64->isPAL()) {
+    if ([c64proxy isPAL]) {
         
         // PAL border will be 36 pixels wide and 34 pixels heigh
         textureXStart = (float)(PAL_LEFT_BORDER_WIDTH - 36.0) / (float)C64_TEXTURE_WIDTH;
@@ -215,12 +201,12 @@ NSRecursiveLock *lock = nil;
 
 - (void)updateTexture:(id<MTLCommandBuffer>) cmdBuffer
 {
-    if (!c64) {
+    if (!c64proxy) {
         NSLog(@"Can't access C64");
         return;
     }
     
-    void *buf = c64->vic->screenBuffer();
+    void *buf = [[c64proxy vic] screenBuffer]; //    c64->vic.screenBuffer();
     assert(buf != NULL);
 
     NSUInteger pixelSize = 4;
@@ -240,8 +226,6 @@ NSRecursiveLock *lock = nil;
 
     [super setFrame:frame];
     layerIsDirty = YES;
-    
-    // [self reshapeWithFrame:frame];
 }
 
 - (void)reshapeWithFrame:(CGRect)frame
@@ -260,6 +244,10 @@ NSRecursiveLock *lock = nil;
 - (void)reshape
 {
     CGSize drawableSize = [metalLayer drawableSize];
+
+    if (layerWidth == drawableSize.width && layerHeight == drawableSize.height)
+        return;
+
     layerWidth = drawableSize.width;
     layerHeight = drawableSize.height;
 
@@ -363,7 +351,19 @@ NSRecursiveLock *lock = nil;
 
 - (BOOL)startFrame
 {
+    static NSInteger width = -1;
+    static NSInteger height = -1;
     framebufferTexture = _drawable.texture;
+
+    if (width != framebufferTexture.width) {
+        width = framebufferTexture.width;
+        NSLog(@"drawable width = %lu", (unsigned long)framebufferTexture.width);
+    }
+    if (height != framebufferTexture.height) {
+        height = framebufferTexture.height;
+        NSLog(@"drawable height = %lu", (unsigned long)framebufferTexture.height);
+    }
+    
     NSAssert(framebufferTexture != nil, @"Framebuffer texture must not be nil");
     
     _commandBuffer = [queue commandBuffer];
@@ -427,7 +427,7 @@ NSRecursiveLock *lock = nil;
     
     // Make texture transparent if emulator is halted
     Uniforms *frameData = (Uniforms *)[uniformBuffer3D contents];
-    frameData->alpha = c64->isHalted() ? 0.5 : currentAlpha;
+    frameData->alpha = [c64proxy isHalted] ? 0.5 : currentAlpha;
 
     // Render background
     if (!fullscreen) {
@@ -461,50 +461,31 @@ NSRecursiveLock *lock = nil;
     }
 }
 
-- (CVReturn)getFrameForTime:(const CVTimeStamp*)timeStamp flagsOut:(CVOptionFlags*)flagsOut
+- (void)drawRect:(CGRect)rect
 {
-    static unsigned showinfo = 1;
+    if (!c64proxy || !enableMetal)
+        return;
     
-    @autoreleasepool {
-        
-        if (!c64 || !enableMetal)
-            return kCVReturnSuccess;
-        
-        [lock lock];
-        dispatch_semaphore_wait(_inflightSemaphore, DISPATCH_TIME_FOREVER);
-        
-        // Refresh size dependent items if needed
-        if (layerIsDirty) {
-            [self reshapeWithFrame:[self frame]];
-            layerIsDirty = NO;
-        }
-        
-        // Get drawable from layer
-        if (showinfo) {
-            showinfo = 0;
-            NSLog(@"device = %@", [metalLayer device]);
-            NSLog(@"pixelFormat = %lu", (unsigned long)[metalLayer pixelFormat]);
-            NSLog(@"frameBufferOnly = %hhd", [metalLayer framebufferOnly]);
-            CGSize size = [metalLayer drawableSize];
-            NSLog(@"drawableSize = %f %f", size.width, size.height);
-            NSLog(@"presentWithTransaction = %hhd", [metalLayer presentsWithTransaction]);
-        }
-        if (!(_drawable = [metalLayer nextDrawable])) {
-            NSLog(@"Metal drawable must not be nil");
-            [lock unlock];
-            return NO;
-        }
-
-        // Draw scene
-        [self updateTexture:_commandBuffer];
-        if (fullscreen && !fullscreenKeepAspectRatio) {
-            [self drawScene2D];
-        } else {
-            [self drawScene3D];
-        }
-        
-        [lock unlock];
-        return kCVReturnSuccess;
+    dispatch_semaphore_wait(_inflightSemaphore, DISPATCH_TIME_FOREVER);
+    
+    // Refresh size dependent items if needed
+    if (layerIsDirty) {
+        [self reshapeWithFrame:[self frame]];
+        layerIsDirty = NO;
+    }
+    
+    // Get drawable from layer
+    if (!(_drawable = [metalLayer nextDrawable])) {
+        NSLog(@"Metal drawable must not be nil");
+        return;
+    }
+    
+    // Draw scene
+    [self updateTexture:_commandBuffer];
+    if (fullscreen && !fullscreenKeepAspectRatio) {
+        [self drawScene2D];
+    } else {
+        [self drawScene3D];
     }
 }
 

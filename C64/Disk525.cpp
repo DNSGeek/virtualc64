@@ -19,10 +19,12 @@
 #include "basic.h"
 #include "Disk525.h"
 #include "D64Archive.h"
+#include "G64Archive.h"
+#include "NIBArchive.h"
 
 Disk525::Disk525()
 {
-    name = "Disk525";
+    setDescription("Disk525");
 
     // Register snapshot items
     SnapshotItem items[] = {        
@@ -147,6 +149,71 @@ Disk525::clearHalftrack(Halftrack ht)
 //                               Data encoding and decoding
 // ---------------------------------------------------------------------------------------------
 
+void
+Disk525::encodeArchive(G64Archive *a)
+{
+    debug(2, "Encoding G64 archive\n");
+    
+    assert(a != NULL);
+
+    clearDisk();
+    for (Halftrack ht = 1; ht <= 84; ht++) {
+        
+        unsigned item = ht - 1;
+        unsigned size = a->getSizeOfItem(item);
+        
+        if (size == 0) {
+            continue;
+        }
+        
+        if (size > 7928) {
+            debug(2, "Halftrack %d has %d bytes. Must be less than 7928\n", ht, size);
+            continue;
+        }
+        debug(2, "  Encoding halftrack %d (%d bytes)\n", ht, size);
+        length.halftrack[ht] = 8 * size;
+        a->selectItem(item);
+        for (unsigned i = 0; i < size; i++) {
+            int b = a->getByte();
+            // printf(" %02X", b);
+            assert(b != -1);
+            data.halftrack[ht][i] = (uint8_t)b;
+        }
+        assert(a->getByte() == -1); /* check for EOF */
+    }
+}
+
+void
+Disk525::encodeArchive(NIBArchive *a)
+{
+    debug(2, "Encoding NIB archive\n");
+    
+    assert(a != NULL);
+    
+    clearDisk();
+    for (Halftrack ht = 1; ht <= 84; ht++) {
+        
+        unsigned size = a->getSizeOfItem(ht - 1);
+
+        if (size == 0) {
+            continue;
+        }
+        
+        if (size > 8 * 7928) {
+            debug(2, "Halftrack %d has %d bits. Must be less than 8 * 7928\n", ht, size);
+            size = 8 * 7928;
+        }
+        debug(2, "  Encoding halftrack %d (%d bits)\n", ht, size);
+        length.halftrack[ht] = size;
+        a->selectItem(ht - 1);
+        unsigned bytesTotal = (size + 7) / 8;
+        for (unsigned i = 0; i < bytesTotal; i++) {
+            int b = a->getByte();
+            assert(b != -1);
+            data.halftrack[ht][i] = (uint8_t)b;
+        }
+    }
+}
 
 void
 Disk525::encodeArchive(D64Archive *a)
@@ -364,8 +431,10 @@ Disk525::decodeDisk(uint8_t *dest, int *error)
     unsigned r, w, copies, noOfOneBits, bitsOnTrack = 0, numBytes = 0;
     int startOfFirstSyncMark = -1;
     
-    if (error) *error = 0; // We assume the best
+    memset(tmpbuf1, 0, sizeof(tmpbuf1));
+    memset(tmpbuf2, 0, sizeof(tmpbuf2));
     
+    if (error) *error = 0; // We assume the best
     
     // For each full track ...
     for (Track t = 1; t <= numTracks; t++) {
@@ -489,7 +558,7 @@ Disk525::decodeTrack(uint8_t *source, uint8_t *dest, int *error)
             }
             
             if (sectorID < 0 || sectorID > 20) {
-                warn("Skipping sector %d. Sector number of range (0 - 20).\n", sectorID);
+                warn("Skipping sector %d. Sector number out of range (0 - 20).\n", sectorID);
                 if (error) *error = 1;
                 continue;
             }

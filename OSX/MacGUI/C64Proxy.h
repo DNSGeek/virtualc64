@@ -21,9 +21,13 @@
 // Forward declarations
 @class MyController;
 @class AudioDevice;
-@class V64Snapshot;
+@class C64Proxy;
+@class SnapshotProxy;
+@class D64ArchiveProxy; 
 @class MyMetalView;
-
+@class ArchiveProxy;
+@class TAPContainerProxy;
+class JoystickManager;
 
 // --------------------------------------------------------------------------
 //                                    CPU
@@ -34,7 +38,7 @@
 	CPU *cpu;
 }
 
-- (id) initWithCPU:(CPU *)c;
+- (instancetype) initWithCPU:(CPU *)c;
 - (void) dump;
 - (bool) tracingEnabled;
 - (void) setTraceMode:(bool)b;
@@ -91,7 +95,7 @@
 	Memory *mem;
 }
 
-- (id) initWithMemory:(Memory *)m;
+- (instancetype) initWithMemory:(Memory *)m;
 - (void) dump;
 
 - (uint8_t) peek:(uint16_t)addr;
@@ -112,7 +116,7 @@
 	VIC *vic;
 }
 
-- (id) initWithVIC:(VIC *)v;
+- (instancetype) initWithVIC:(VIC *)v;
 - (void) dump;
 
 - (void *) screenBuffer;
@@ -189,7 +193,7 @@
 	CIA *cia;
 }
 
-- (id) initWithCIA:(CIA *)c;
+- (instancetype) initWithCIA:(CIA *)c;
 - (void) dump;
 - (bool) tracingEnabled;
 - (void) setTraceMode:(bool)b;
@@ -272,13 +276,19 @@
 	Keyboard *keyboard;
 }
 
-- (id) initWithKeyboard:(Keyboard *)kb;
+- (instancetype) initWithKeyboard:(Keyboard *)kb;
 - (void) dump;
 
-- (void) pressKey:(char)c;
-- (void) releaseKey:(char)c;
+- (void) pressKey:(int)c;
+- (void) releaseKey:(int)c;
 - (void) pressRunstopKey;
 - (void) releaseRunstopKey;
+- (void) pressShiftRunstopKey;
+- (void) releaseShiftRunstopKey;
+- (void) pressRestoreKey;
+- (void) releaseRestoreKey;
+- (void) pressRunstopRestoreKey;
+- (void) releaseRunstopRestoreKey;
 - (void) pressCommodoreKey;
 - (void) releaseCommodoreKey;
 - (void) pressClearKey;
@@ -289,6 +299,7 @@
 - (void) releaseInsertKey;
 
 - (void) typeText:(NSString *)text;
+- (void) typeText:(NSString *)text withDelay:(int)delay;
 
 @end 
 
@@ -296,11 +307,28 @@
 //                                 Joystick
 // -------------------------------------------------------------------------
 
+#if 0
+@interface JoystickManagerProxy : NSObject {
+    JoystickManager *manager;
+}
+
+- (instancetype) initWithC64:(C64Proxy *)c64;
+// - (instancetype) initWithJoystickManager:(JoystickManager *)m;
+// - (instancetype) init;
+
+@end
+#endif
+
 @interface JoystickProxy : NSObject {
     Joystick *joystick;
 }
 
-- (id) initWithJoystick:(Joystick *)joy;
+- (instancetype) initWithJoystick:(Joystick *)joy;
+
+- (void) setButtonPressed:(BOOL)pressed;
+- (void) setAxisX:(JoystickDirection)state;
+- (void) setAxisY:(JoystickDirection)state;
+
 - (void) dump;
 
 @end
@@ -313,7 +341,7 @@
 	SIDWrapper *sid;
 }
 
-- (id) initWithSID:(SIDWrapper *)s;
+- (instancetype) initWithSID:(SIDWrapper *)s;
 - (void) dump;
 
 @end
@@ -326,7 +354,7 @@
 	IEC *iec;
 }
 
-- (id) initWithIEC:(IEC *)bus;
+- (instancetype) initWithIEC:(IEC *)bus;
 - (void) dump;
 - (bool) tracingEnabled;
 - (void) setTraceMode:(bool)b;
@@ -344,7 +372,7 @@
     ExpansionPort *expansionPort;
 }
 
-- (id) initWithExpansionPort:(ExpansionPort *)v;
+- (instancetype) initWithExpansionPort:(ExpansionPort *)v;
 - (void) dump;
 - (bool) cartridgeAttached; 
 - (int) cartridgeType;
@@ -361,10 +389,28 @@
 	VIA6522 *via;
 }
 
-- (id) initWithVIA:(VIA6522 *)v;
+- (instancetype) initWithVIA:(VIA6522 *)v;
 - (void) dump;
 - (bool) tracingEnabled;
 - (void) setTraceMode:(bool)b;
+
+@end
+
+// --------------------------------------------------------------------------
+//                                5,25" diskette
+// -------------------------------------------------------------------------
+
+@interface Disk525Proxy : NSObject {
+    Disk525 *disk;
+}
+
+- (instancetype)initWithDisk525:(Disk525 *)d;
+
+- (BOOL)isWriteProtected;
+- (void)setWriteProtection:(BOOL)b;
+- (BOOL)isModified;
+- (void)setModified:(BOOL)b;
+- (NSInteger)numTracks;
 
 @end
 
@@ -373,19 +419,24 @@
 // -------------------------------------------------------------------------
 
 @interface VC1541Proxy : NSObject {
+    
 	VC1541 *vc1541;
+    
+    // sub proxys
 	CPUProxy *cpu;
 	MemoryProxy *mem;
 	VIAProxy *via1;
 	VIAProxy *via2;
+    Disk525Proxy *disk;
 }
 
 @property (readonly) CPUProxy *cpu;
 @property (readonly) MemoryProxy *mem;
 @property (readonly) VIAProxy *via1;
 @property (readonly) VIAProxy *via2;
+@property (readonly) Disk525Proxy *disk;
 
-- (id) initWithVC1541:(VC1541 *)vc;
+- (instancetype) initWithVC1541:(VC1541 *)vc;
 - (VIAProxy *) via:(int)num;
 
 - (void) dump;
@@ -393,6 +444,7 @@
 - (void) setTraceMode:(bool)b;
 - (bool) hasRedLED;
 - (bool) hasDisk;
+- (void) ejectDisk;
 - (bool) writeProtection;
 - (void) setWriteProtection:(bool)b;
 - (bool) DiskModified;
@@ -401,28 +453,52 @@
 - (void) setBitAccuracy:(bool)b;
 - (bool) soundMessagesEnabled;
 - (void) setSendSoundMessages:(bool)b;
+- (D64ArchiveProxy *) convertToD64;
 - (bool) exportToD64:(NSString *)path;
-- (D64Archive *)archiveFromDrive;
-- (void) ejectDisk;
-
 
 - (void) playSound:(NSString *)name volume:(float)v;
 
 @end
 
-
 // --------------------------------------------------------------------------
+//                                  Datasette
+// --------------------------------------------------------------------------
+
+@interface DatasetteProxy : NSObject {
+    Datasette *datasette;
+}
+
+- (instancetype) initWithDatasette:(Datasette *)kb;
+- (void) dump;
+
+- (bool) hasTape;
+- (void) pressPlay;
+- (void) pressStop;
+- (void) pressRewind;
+- (void) ejectTape;
+- (NSInteger) getType; 
+- (long) durationInCycles;
+- (int) durationInSeconds;
+- (int) head;
+- (long) headInCycles;
+- (int) headInSeconds;
+- (void) setHeadInCycles:(long)value;
+- (BOOL) motor;
+- (BOOL) playKey;
+
+@end
+
+// -------------------------------------------------------------------------
 //                                    C64
 // -------------------------------------------------------------------------
 
 @interface C64Proxy : NSObject {	
-	
-    // IBOutlet MyMetalView *metalScreen;
 
 	C64 *c64;
 	AudioDevice *audioDevice;
-
-	// Sub proxys
+    JoystickManager *joystickManager;
+    
+	// Sub component proxys
 	CPUProxy *cpu;
 	MemoryProxy *mem;
 	VICProxy *vic;
@@ -430,21 +506,24 @@
 	CIAProxy *cia2;
 	SIDProxy *sid;
 	KeyboardProxy *keyboard;
-    JoystickProxy *joystick1;
-    JoystickProxy *joystick2;
+    JoystickProxy *joystickA;
+    JoystickProxy *joystickB;
 	IECProxy *iec;
     ExpansionPortProxy *expansionport;
 	VC1541Proxy *vc1541;
-	
+    DatasetteProxy *datasette;
+
 	//! Indicates that data is transmitted on the IEC bus
 	BOOL iecBusIsBusy;
+
+    //! Indicates that data is transmitted on the datasette data line
+    BOOL tapeBusIsBusy;
 
     //! Currently used color scheme
     int colorScheme;
 }
 
 @property (strong,readonly) MyMetalView *metalScreen;
-@property (readonly) C64 *c64;
 @property (readonly) CPUProxy *cpu;
 @property (readonly) MemoryProxy *mem;
 @property (readonly) VICProxy *vic;
@@ -452,13 +531,15 @@
 @property (readonly) CIAProxy *cia2;
 @property (readonly) SIDProxy *sid;
 @property (readonly) KeyboardProxy *keyboard;
-@property (readonly) JoystickProxy *joystick1;
-@property (readonly) JoystickProxy *joystick2;
+@property (readonly) JoystickProxy *joystickA;
+@property (readonly) JoystickProxy *joystickB;
 @property (readonly) IECProxy *iec;
 @property (readonly) ExpansionPortProxy *expansionport;
 @property (readonly) VC1541Proxy *vc1541;
+@property (readonly) DatasetteProxy *datasette;
 
 @property BOOL iecBusIsBusy;
+@property BOOL tapeBusIsBusy;
 
 // Initialization
 - (void) kill;
@@ -478,9 +559,9 @@
 
 // Loadind and saving
 - (void)_loadFromSnapshot:(Snapshot *) snapshot;
-- (void)loadFromSnapshot:(V64Snapshot *) snapshot;
+- (void)loadFromSnapshot:(SnapshotProxy *) snapshot;
 - (void)_saveToSnapshot:(Snapshot *) snapshot;
-- (void)saveToSnapshot:(V64Snapshot *) snapshot;
+- (void)saveToSnapshot:(SnapshotProxy *) snapshot;
 
 - (CIAProxy *) cia:(int)num;
 
@@ -504,7 +585,6 @@
 - (void) setPAL;
 - (void) setNTSC;
 
-//- (int) numberOfMissingRoms;
 - (uint8_t) missingRoms;
 - (bool) isBasicRom:(NSString *)filename;
 - (bool) loadBasicRom:(NSString *)filename;
@@ -521,8 +601,10 @@
 - (void) detachCartridge;
 - (bool) isCartridgeAttached;
 
-- (bool) mountArchive:(D64Archive *)a;
-- (bool) flushArchive:(Archive *)a item:(int)nr;
+- (bool) mountArchive:(ArchiveProxy *)a;
+- (bool) flushArchive:(ArchiveProxy *)a item:(int)nr;
+
+- (bool) insertTape:(TAPContainerProxy *)a;
 
 - (bool) warp;
 - (void) setWarp:(bool)b;
@@ -546,15 +628,16 @@
 - (time_t)historicSnapshotTimestamp:(int)nr;
 - (bool)revertToHistoricSnapshot:(int)nr;
 
-// Joystick
-- (Joystick *) joystick:(int)nr; 
+// Joystick handling
+- (BOOL)joystickIsPluggedIn:(int)nr;
+- (void)bindJoystickToPortA:(int)nr;
+- (void)bindJoystickToPortB:(int)nr;
+- (void)unbindJoysticksFromPortA;
+- (void)unbindJoysticksFromPortB;
 
 // Audio hardware
 - (void) enableAudio;
 - (void) disableAudio;
-
-// User triggered interrupts
-- (void) keyboardPressRunstopRestore;
 
 @end
 
@@ -563,29 +646,110 @@
 //                                  Snapshot
 // --------------------------------------------------------------------------
 
-// Get rid of this class. Too much overhead and no real use
-
-
-@interface V64Snapshot : NSObject {
-	@private
-	Snapshot *snapshot;
+@interface SnapshotProxy : NSObject
+{
+	@private Snapshot *snapshot;
 }
 
 @property Snapshot *snapshot;
 
-- (id) init;
-- (id) initWithSnapshot:(Snapshot *)s;
+- (instancetype) init;
+- (instancetype) initWithSnapshot:(Snapshot *)s;
++ (instancetype) snapshotFromSnapshot:(Snapshot *)snapshot;
++ (instancetype) snapshotFromFile:(NSString *)path;
++ (instancetype) snapshotFromBuffer:(const void *)buffer length:(unsigned)length;
 
-+ (id) snapshotFromC64:(C64Proxy *)c64;
-+ (id) snapshotFromSnapshot:(Snapshot *)snapshot;
-+ (id) snapshotFromFile:(NSString *)path;
-+ (id) snapshotFromBuffer:(const void *)buffer length:(unsigned)length;
-
-- (unsigned char *)imageData;
-- (time_t)timeStamp;
-	
 - (bool) readDataFromFile:(NSString *)path;
 - (bool) writeDataToFile:(NSString *)path;
+
+@end
+
+// --------------------------------------------------------------------------
+//                                Archive
+// --------------------------------------------------------------------------
+
+@interface ArchiveProxy : NSObject
+{
+    Archive *archive;
+}
+
+@property Archive *archive;
+
+- (instancetype) initWithArchive:(Archive *)s;
+
+- (NSString *)getPath;
+- (NSString *)getName;
+- (NSInteger)getType;
+- (NSInteger)getNumberOfItems; 
+- (BOOL)writeToFile:(NSString *)filename; 
+
+@end
+
+@interface T64ArchiveProxy : ArchiveProxy
+{
+}
++ (BOOL) isT64File:(NSString *)filename;
++ (instancetype) archiveFromT64File:(NSString *)filename;
++ (instancetype) archiveFromArchive:(ArchiveProxy *)otherArchive;
+@end
+
+@interface D64ArchiveProxy : ArchiveProxy
+{
+}
++ (BOOL) isD64File:(NSString *)filename;
++ (instancetype) archiveFromD64File:(NSString *)filename;
++ (instancetype) archiveFromArbitraryFile:(NSString *)filename;
++ (instancetype) archiveFromD64Archive:(D64ArchiveProxy *)archive;
++ (instancetype) archiveFromArchive:(ArchiveProxy *)archive;
+@end
+
+@interface PRGArchiveProxy : ArchiveProxy
+{
+}
++ (BOOL) isPRGFile:(NSString *)filename;
++ (instancetype) archiveFromPRGFile:(NSString *)filename;
++ (instancetype) archiveFromArchive:(ArchiveProxy *)otherArchive;
+@end
+
+@interface P00ArchiveProxy : ArchiveProxy
+{
+}
++ (BOOL) isP00File:(NSString *)filename;
++ (instancetype) archiveFromP00File:(NSString *)filename;
++ (instancetype) archiveFromArchive:(ArchiveProxy *)otherArchive;
+@end
+
+@interface G64ArchiveProxy : ArchiveProxy
+{
+}
++ (BOOL) isG64File:(NSString *)filename;
++ (instancetype) archiveFromG64File:(NSString *)filename;
+@end
+
+@interface NIBArchiveProxy : ArchiveProxy
+{
+}
++ (BOOL) isNIBFile:(NSString *)filename;
++ (instancetype) archiveFromNIBFile:(NSString *)filename;
+@end
+
+
+@interface TAPContainerProxy : NSObject
+{
+    TAPArchive *container;
+}
+
+@property TAPArchive *container;
+
+- (instancetype) initWithTAPContainer:(TAPArchive *)a;
+
++ (BOOL) isTAPFile:(NSString *)filename;
++ (instancetype) containerFromTAPFile:(NSString *)filename;
+
+- (NSString *)getPath;
+- (NSString *)getName;
+- (NSInteger)getType;
+- (NSInteger)TAPversion;
 
 @end
 

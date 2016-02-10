@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="9059" systemVersion="15B42" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none">
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="9531" systemVersion="15C50" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none">
     <dependencies>
-        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="9059"/>
+        <deployment identifier="macosx"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="9531"/>
     </dependencies>
     <objects>
         <customObject id="-2" userLabel="File's Owner" customClass="NSApplication"/>
         <customObject id="-1" userLabel="First Responder" customClass="FirstResponder"/>
-        <customObject id="-3" userLabel="Application">
+        <customObject id="-3" userLabel="Application" customClass="NSObject">
             <connections>
                 <outlet property="delegate" destination="573" id="574"/>
             </connections>
@@ -145,6 +146,12 @@
                                     <action selector="saveScreenshotDialog:" target="-1" id="545"/>
                                 </connections>
                             </menuItem>
+                            <menuItem title="Quick  save screenshot" keyEquivalent="s" id="7oe-oV-MnG">
+                                <modifierMask key="keyEquivalentModifierMask" option="YES"/>
+                                <connections>
+                                    <action selector="quicksaveScreenshot:" target="-1" id="3hD-6J-vdQ"/>
+                                </connections>
+                            </menuItem>
                             <menuItem isSeparatorItem="YES" id="542">
                                 <modifierMask key="keyEquivalentModifierMask" command="YES"/>
                             </menuItem>
@@ -203,9 +210,19 @@
                                     <action selector="runstopAction:" target="-1" id="320"/>
                                 </connections>
                             </menuItem>
-                            <menuItem title="RUNSTOP RESTORE" id="305">
+                            <menuItem title="SHIFT RUNSTOP" id="HYx-Xn-PfQ">
                                 <connections>
-                                    <action selector="runstopRestoreAction:" target="-1" id="326"/>
+                                    <action selector="shiftRunstopAction:" target="-1" id="Mzp-fm-Cux"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="RESTORE" id="305" userLabel="RESTORE">
+                                <connections>
+                                    <action selector="restoreAction:" target="-1" id="zPw-ce-HkM"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="RUNSTOP RESTORE" id="VdY-b4-dYs">
+                                <connections>
+                                    <action selector="runstopRestoreAction:" target="-1" id="7eq-vM-gwo"/>
                                 </connections>
                             </menuItem>
                             <menuItem title="COMMODORE" id="317">
@@ -214,6 +231,7 @@
                                 </connections>
                             </menuItem>
                             <menuItem title="CLR" id="512">
+                                <modifierMask key="keyEquivalentModifierMask"/>
                                 <connections>
                                     <action selector="ClearKeyAction:" target="-1" id="521"/>
                                 </connections>
@@ -523,12 +541,6 @@ CQ
             </items>
         </menu>
         <customObject id="411" customClass="SUUpdater"/>
-        <menuItem title="Keyboard" id="534">
-            <modifierMask key="keyEquivalentModifierMask"/>
-            <connections>
-                <action selector="dumpKeyboard:" target="-1" id="536"/>
-            </connections>
-        </menuItem>
         <customObject id="573" userLabel="AppDelegate" customClass="MyController"/>
     </objects>
 </document>

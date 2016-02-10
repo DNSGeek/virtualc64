@@ -51,6 +51,46 @@
 		<dict>
 			<key>CFBundleTypeExtensions</key>
 			<array>
+				<string>G64</string>
+			</array>
+			<key>CFBundleTypeIconFile</key>
+			<string>IconD64</string>
+			<key>CFBundleTypeName</key>
+			<string>G64</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSTypeIsPackage</key>
+			<false/>
+			<key>NSDocumentClass</key>
+			<string>MyDocument</string>
+			<key>NSPersistentStoreTypeKey</key>
+			<string>Binary</string>
+		</dict>
+		<dict>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>NIB</string>
+			</array>
+			<key>CFBundleTypeIconFile</key>
+			<string>IconD64</string>
+			<key>CFBundleTypeName</key>
+			<string>NIB</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSTypeIsPackage</key>
+			<false/>
+			<key>NSDocumentClass</key>
+			<string>MyDocument</string>
+			<key>NSPersistentStoreTypeKey</key>
+			<string>Binary</string>
+		</dict>
+		<dict>
+			<key>CFBundleTypeExtensions</key>
+			<array>
 				<string>T64</string>
 			</array>
 			<key>CFBundleTypeIconFile</key>
@@ -128,6 +168,22 @@
 			<key>NSPersistentStoreTypeKey</key>
 			<string>Binary</string>
 		</dict>
+		<dict>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>TAP</string>
+			</array>
+			<key>CFBundleTypeIconFile</key>
+			<string>IconT64</string>
+			<key>CFBundleTypeName</key>
+			<string>TAP</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSTypeIsPackage</key>
+			<integer>0</integer>
+			<key>NSDocumentClass</key>
+			<string>MyDocument</string>
+		</dict>
 	</array>
 	<key>CFBundleExecutable</key>
 	<string>VirtualC64</string>
@@ -144,11 +200,11 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.1.3</string>
+	<string>1.4.2</string>
 	<key>CFBundleSignature</key>
 	<string>vc64</string>
-	<key>CFBundleURLTypes</key>
-	<array/>
+	<key>CFBundleVersion</key>
+	<string>1.4.2</string>
 	<key>Fabric</key>
 	<dict>
 		<key>APIKey</key>
@@ -174,8 +230,6 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
-	<key>NSServices</key>
-	<array/>
 	<key>SUAllowsAutomaticUpdates</key>
 	<string>NO</string>
 	<key>SUEnableAutomaticChecks</key>
@@ -188,9 +242,5 @@
 	<string>dsa_pub.pem</string>
 	<key>SUShowReleaseNotes</key>
 	<string>YES</string>
-	<key>UTExportedTypeDeclarations</key>
-	<array/>
-	<key>UTImportedTypeDeclarations</key>
-	<array/>
 </dict>
 </plist>

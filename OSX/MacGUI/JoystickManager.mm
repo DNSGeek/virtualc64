@@ -18,283 +18,305 @@
 
 #include "C64GUI.h"
 
-using std::make_pair; // DO WE NEED THIS?
 
 // ---------------------------------------------------------------------------------------------
-//                                             JoystickManagerProxy
+//                                             IOHIDDeviceInfo
 // ---------------------------------------------------------------------------------------------
 
-JoystickManagerProxy::JoystickManagerProxy()
+IOHIDDeviceInfo::IOHIDDeviceInfo()
 {
-    _joystick = NULL;
-    
+    _name = NULL;
+    _locationID = 0;
 }
 
-void JoystickManagerProxy::bindJoystick(Joystick *joy)
+IOHIDDeviceInfo::IOHIDDeviceInfo(const IOHIDDeviceInfo &copy)
 {
-    _joystick = joy;
-}
-
-void JoystickManagerProxy::ChangeButton(int index, bool pressed)
-{
-    bool found = (_pressedButtons.find(index) != _pressedButtons.end());
-
-    if(pressed) {
-        if(!found) _pressedButtons.insert(index);
+    if(copy._name) {
+        size_t len = strlen(copy._name);
+        _name = new char[len + 1];
+        strncpy(_name, copy._name, len);
     } else {
-        if (found) _pressedButtons.erase(index);
+        _name = NULL;
     }
-
-    if (_joystick)
-        _joystick->SetButtonPressed(_pressedButtons.size() != 0);
+    
+    _locationID = copy._locationID;
 }
 
-void JoystickManagerProxy::ChangeAxisX(JoystickAxisState state) const
+IOHIDDeviceInfo::IOHIDDeviceInfo(IOHIDDeviceRef device)
 {
-    if (_joystick)
-        _joystick->SetAxisX(state);
+    CFTypeRef typeRef;
+    
+    _name = NULL;
+    _locationID = 0;
+    
+    if (device == NULL) {
+        NSLog(@"IOHIDDeviceRef == NULL");
+        return;
+    }
+    
+    if((typeRef = IOHIDDeviceGetProperty(device, CFSTR(kIOHIDProductKey)))) {
+        
+        if (CFStringGetTypeID() == CFGetTypeID(typeRef)) {
+            CFIndex len = CFStringGetLength( (CFStringRef) typeRef ) + 1;
+            
+            _name = new char[ len ];
+            _name[ len - 1 ] = 0;
+            
+            CFStringGetCString((CFStringRef)typeRef, _name, len, kCFStringEncodingMacRoman);
+        }
+    }
+    
+    if((typeRef = IOHIDDeviceGetProperty( device, CFSTR( kIOHIDLocationIDKey)))  &&  (CFNumberGetTypeID() == CFGetTypeID(typeRef)))
+        CFNumberGetValue((CFNumberRef)typeRef, kCFNumberIntType, &_locationID);
 }
 
-void JoystickManagerProxy::ChangeAxisY(JoystickAxisState state) const
+IOHIDDeviceInfo::~IOHIDDeviceInfo()
 {
-    if (_joystick)
-        _joystick->SetAxisY(state);
+    if(_name)
+        delete [] _name;
 }
 
 // ---------------------------------------------------------------------------------------------
 //                                             JoystickManager
 // ---------------------------------------------------------------------------------------------
 
-const int JoystickManager::UsageToSearch[][2] =
-{
-	/* Page */						/* Usage (0 for none ) */
-	{	kHIDPage_GenericDesktop,	kHIDUsage_GD_Joystick	},
-	{	kHIDPage_GenericDesktop,	kHIDUsage_GD_GamePad	},
-};
-const unsigned JoystickManager::MaxJoystickCount = 2;
-
 JoystickManager::JoystickManager(C64Proxy *proxy)
 {
     _proxy = proxy;
     _manager = NULL;
-    locationID1 = 0;
-    locationID2 = 0;
-    proxy1 = NULL;
-    proxy2 = NULL;
+}
+
+bool JoystickManager::initialize()
+{
+    const int deviceFilter[][2] = {
+        { kHIDPage_GenericDesktop, kHIDUsage_GD_Joystick },
+        { kHIDPage_GenericDesktop, kHIDUsage_GD_GamePad }
+    };
+    
+    CFMutableArrayRef matchingArray = NULL;
+    CFMutableDictionaryRef dict = NULL;
+    CFNumberRef number;
+    IOReturn status;
+    bool success = false;
+    
+    // Allocate matching array
+    if(!(matchingArray = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks))) {
+        NSLog(@"Cannot create mutable array");
+        goto bailout;
+    }
+    
+    // Fill matching array
+    for(unsigned n = 0; n < sizeof(deviceFilter) / sizeof(deviceFilter[0]); n++) {
+        
+        if (!(dict = CFDictionaryCreateMutable(kCFAllocatorDefault, 0,
+                                               &kCFTypeDictionaryKeyCallBacks,
+                                               &kCFTypeDictionaryValueCallBacks))) {
+            NSLog( @"Cannot create mutable dictionary");
+            goto bailout;
+        }
+        
+        if (!(number = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &deviceFilter[n][0]))) {
+            NSLog(@"Cannot create CFNumberCreate");
+            goto bailout;
+        }
+        
+        CFDictionarySetValue(dict, CFSTR(kIOHIDDeviceUsagePageKey), number);
+        CFRelease(number);
+        
+        if(deviceFilter[n][1]) {
+            if (!(number = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &deviceFilter[n][1]))) {
+                NSLog(@"Cannot create CFNumberCreate");
+                goto bailout;
+            }
+            
+            CFDictionarySetValue(dict, CFSTR(kIOHIDDeviceUsageKey), number);
+            CFRelease(number);
+        }
+        
+        CFArrayAppendValue(matchingArray, dict);
+    }
+    
+    // Create HIDManager
+    if (!(_manager = IOHIDManagerCreate(kCFAllocatorDefault, 0))) {
+        NSLog(@"Cannot create HIDManager");
+        goto bailout;
+    }
+    
+    // Configure HIDManager
+    IOHIDManagerSetDeviceMatchingMultiple(_manager, matchingArray);
+    IOHIDManagerRegisterDeviceMatchingCallback(_manager, MatchingCallback_static, this);
+    IOHIDManagerScheduleWithRunLoop(_manager, CFRunLoopGetMain(), kCFRunLoopDefaultMode);
+    
+    // Open HIDManager
+    if ((status = IOHIDManagerOpen(_manager, kIOHIDOptionsTypeNone)) != kIOReturnSuccess) {
+        NSLog(@"Failed to open HIDManager (status = %i)", status);
+        goto bailout;
+    }
+    
+    [_proxy putMessage:MSG_JOYSTICK_REMOVED];
+    NSLog(@"HID manager is initialized");
+
+    success = true;
+    
+bailout:
+    
+    if (matchingArray)
+        CFRelease(matchingArray);
+    if (dict)
+        CFRelease(dict);
+    
+    return success;
 }
 
 JoystickManager::~JoystickManager()
 {
-    Dispose();
+    IOHIDManagerClose(_manager, kIOHIDOptionsTypeNone);
+    CFRelease(_manager);
 }
 
 bool JoystickManager::joystickIsPluggedIn(int nr)
 {
     assert (nr >= 1 && nr <= 2);
-    
-    if (nr == 1) return (proxy1 != NULL);
-    if (nr == 2) return (proxy2 != NULL);
-    return false;
+    return usbjoy[nr - 1].pluggedIn;
 }
 
-void JoystickManager::bindJoystick(int nr, Joystick *joy)
+void
+JoystickManager::bindJoystick(int nr, JoystickProxy *joy)
 {
     assert (nr >= 1 && nr <= 2);
 
-    if (nr == 1 && proxy1 != NULL) {
-        
-        proxy1->bindJoystick(joy);
+    if (usbjoy[nr - 1].pluggedIn) {
+    
+        usbjoy[nr - 1].bindJoystick(joy);
 
         if (joy == NULL)
-            fprintf(stderr, "Remove binding for first USB joystick\n");
+            fprintf(stderr, "Remove binding for %s USB joystick\n", nr == 1 ? "first" : "second");
         else
-            fprintf(stderr, "Bind first USB joystick to %p\n", joy);
-    }
-    if (nr == 2 && proxy2 != NULL) {
-
-        proxy2->bindJoystick(joy);
-
-        if (joy == NULL)
-            fprintf(stderr, "Remove binding for second USB joystick\n");
-        else
-            fprintf(stderr, "Bind second USB joystick to %p\n", joy);
+            fprintf(stderr, "Bind %s USB joystick to %p\n", nr == 1 ? "first" : "second", joy);
     }
 }
 
-void JoystickManager::addJoystickProxyWithLocationID(int locationID, JoystickManagerProxy *proxy)
+void
+JoystickManager::unbindJoysticksFromPortA()
 {
-    if (proxy1 == NULL) {
-        locationID1 = locationID;
-        proxy1 = proxy;
-        return;
-    }
-    if (proxy2 == NULL) {
-        locationID2 = locationID;
-        proxy2 = proxy;
-        return;
+    for (unsigned i = 0; i < 2; i++) {
+        if (usbjoy[i].joystick == [_proxy joystickA])
+            usbjoy[i].unbindJoystick();
     }
 }
 
-JoystickManagerProxy *JoystickManager::getJoystickProxyWithLocationID(int locationID)
+void
+JoystickManager::unbindJoysticksFromPortB()
 {
-    if (locationID1 == locationID) {
-        assert(proxy1 != NULL);
-        return proxy1;
+    for (unsigned i = 0; i < 2; i++) {
+        if (usbjoy[i].joystick == [_proxy joystickB])
+            usbjoy[i].unbindJoystick();
     }
-    if (locationID2 == locationID) {
-        assert(proxy2 != NULL);
-        return proxy2;
+}
+
+bool JoystickManager::addJoystickProxyWithLocationID(int locationID)
+{
+    
+    if (!usbjoy[0].pluggedIn) {
+        usbjoy[0].pluggedIn = true;
+        usbjoy[0].locationID = locationID;
+        NSLog(@"Joystick with ID %d added to slot 0", locationID);
+        return true;
     }
+    
+    if (!usbjoy[1].pluggedIn) {
+        usbjoy[1].pluggedIn = true;
+        usbjoy[1].locationID = locationID;
+        NSLog(@"Joystick with ID %d added to slot 1", locationID);
+        return true;
+    }
+    
+    return false;
+}
+
+USBJoystick *JoystickManager::getJoystickProxyWithLocationID(int locationID)
+{
+    if (usbjoy[0].pluggedIn && usbjoy[0].locationID == locationID)
+        return &usbjoy[0];
+
+    if (usbjoy[1].pluggedIn && usbjoy[1].locationID == locationID)
+        return &usbjoy[1];
+    
     return NULL;
 }
 
 void JoystickManager::removeJoystickProxyWithLocationID(int locationID)
 {
-    if (locationID1 == locationID) {
-        locationID1 = 0;
-        // delete proxy1; MEMORY LEAK?
-        proxy1 = NULL;
-        return;
+    if (usbjoy[0].pluggedIn && usbjoy[0].locationID == locationID) {
+        usbjoy[0].pluggedIn = false;
+        usbjoy[0].locationID = 0;
+        NSLog(@"Joystick with ID %d removed from slot 0", locationID);
     }
-    if (locationID2 == locationID) {
-        locationID2 = 0;
-        // delete proxy2; MEMORY LEAK?
-        proxy2 = NULL;
-        return;
+
+    if (usbjoy[1].pluggedIn && usbjoy[1].locationID == locationID) {
+        usbjoy[1].pluggedIn = false;
+        usbjoy[1].locationID = 0;
+        NSLog(@"Joystick with ID %d removed from slot 1", locationID);
     }
 }
 
 void JoystickManager::listJoystickManagers()
 {
-    NSLog(@"Slot 1: %p (ID %d)", proxy1, locationID1);
-    NSLog(@"Slot 2: %p (ID %d)", proxy2, locationID2);
+    NSLog(@"USB joystick slot 1: (ID %d)", usbjoy[0].locationID);
+    NSLog(@"USB joystick slot 2: (ID %d)", usbjoy[1].locationID);
 }
 
-bool JoystickManager::Initialize()
-{
-    // NSLog(@"JoystickManager::Initialize");
-    // NSLog(@"%s", __PRETTY_FUNCTION__);
-    
-	CFMutableArrayRef matchingArray = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
 
-    if( !matchingArray ) {
-		NSLog(@"Cannot create mutable array");
-		return false;
-	}
-    
-	for(unsigned n = 0; n < sizeof( UsageToSearch ) / sizeof( UsageToSearch[0]); n++) {
-		CFMutableDictionaryRef dict = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 
-        if(!dict) {
-			NSLog( @"Cannot create mutable dictionary");
-			CFRelease( matchingArray );
-			return false;
-		}
-		
-		CFNumberRef number = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &UsageToSearch[n][0]);
 
-        if(!number) {
-			NSLog(@"Cannot create CFNumberCreate");
-			CFRelease(matchingArray);
-			CFRelease(dict);
-			return false;	
-		}
-        
-		CFDictionarySetValue(dict, CFSTR( kIOHIDDeviceUsagePageKey), number);
-		CFRelease(number);
-		
-		if(UsageToSearch[n][1]) {
-			number = CFNumberCreate( kCFAllocatorDefault, kCFNumberIntType, &UsageToSearch[n][1]);
-
-            if( !number ) {
-                NSLog(@"Cannot create CFNumberCreate");
-				CFRelease(matchingArray);
-				CFRelease(dict);
-				return false;	
-			}
-            
-			CFDictionarySetValue(dict, CFSTR(kIOHIDDeviceUsageKey), number);
-			CFRelease(number);
-		}
-		
-		CFArrayAppendValue(matchingArray, dict);
-		CFRelease(dict);
-	}
-	
-	_manager = IOHIDManagerCreate(kCFAllocatorDefault, 0);
-
-    if(!_manager) {
-		NSLog(@"Cannot create HIDManager");
-		CFRelease(matchingArray);
-		return false;
-	}
-	
-	IOHIDManagerSetDeviceMatchingMultiple(_manager, matchingArray);
-	CFRelease(matchingArray);
-	IOHIDManagerRegisterDeviceMatchingCallback(_manager, MatchingCallback_static, this);
-	IOHIDManagerScheduleWithRunLoop(_manager, CFRunLoopGetMain(), kCFRunLoopDefaultMode);
-	
-	IOReturn status = IOHIDManagerOpen(_manager, kIOHIDOptionsTypeNone);
-
-    if(status != kIOReturnSuccess) {
-		NSLog(@"Failed to open HIDManager (status = %i)", status);
-		return false;
-	}
-    
-    [_proxy putMessage:MSG_JOYSTICK_REMOVED];
-    NSLog(@"HID manager is initialized");
-    return true;
-}
-
-void JoystickManager::Dispose()
-{
-    // NSLog(@"%s", __PRETTY_FUNCTION__);
-
-	IOHIDManagerClose(_manager, kIOHIDOptionsTypeNone);
-	CFRelease(_manager);
-}
-
-void JoystickManager::MatchingCallback_static(void *inContext, IOReturn inResult, void *inSender, IOHIDDeviceRef inIOHIDDeviceRef)
+void JoystickManager::MatchingCallback_static(void *inContext,
+                                              IOReturn inResult,
+                                              void *inSender,
+                                              IOHIDDeviceRef inIOHIDDeviceRef)
 {
     assert (inContext != NULL);
     
     JoystickManager *context = (JoystickManager *)inContext;
-    context->MatchingCallback( inContext, inResult, inSender, inIOHIDDeviceRef);
+    context->MatchingCallback(inContext, inResult, inSender, inIOHIDDeviceRef);
 }
 
 void 
-JoystickManager::MatchingCallback(void *inContext, IOReturn inResult, void *inSender, IOHIDDeviceRef inIOHIDDeviceRef)
+JoystickManager::MatchingCallback(void *inContext,
+                                  IOReturn inResult,
+                                  void *inSender,
+                                  IOHIDDeviceRef inIOHIDDeviceRef)
 {
     // NSLog(@"%s",__PRETTY_FUNCTION__);
 
 	IOHIDDeviceInfo devInfo = IOHIDDeviceInfo(inIOHIDDeviceRef);
-	
+    char *devInfoName = devInfo.GetName();
+
 	if( inResult != kIOReturnSuccess )
 	{
 		NSLog(@"Device %p (%s) is not in successful state (%i)\n",
-              inIOHIDDeviceRef, devInfo.GetName(), inResult);
+              inIOHIDDeviceRef, devInfoName ? devInfoName : "", inResult);
 		return;
 	}
-	
+    
     if(getJoystickProxyWithLocationID(devInfo.GetLocationID()) != NULL) {
         NSLog(@"Device %p (%s) already opend.\n",
-              inIOHIDDeviceRef, devInfo.GetName());
+              inIOHIDDeviceRef, devInfoName ? devInfoName : "");
         return;
 	}
 	
-    if(proxy1 != NULL && proxy2 != NULL) {
+    if(usbjoy[0].pluggedIn && usbjoy[1].pluggedIn) {
 		NSLog(@"Ignoring %s (%p): Maximum number of devices reached.\n",
-              devInfo.GetName(), inIOHIDDeviceRef);
+              devInfoName ? devInfoName : "", inIOHIDDeviceRef);
 		return;
 	}
 	
 	IOReturn status;
 	if( ( status = IOHIDDeviceOpen(inIOHIDDeviceRef, kIOHIDOptionsTypeNone ) ) != kIOReturnSuccess) {
 		NSLog(@"Failed to open device %p (%s) (status = %i)\n",
-              inIOHIDDeviceRef, devInfo.GetName(), status );
+              inIOHIDDeviceRef, devInfoName ? devInfoName : "", status );
 		return;
 	}
-	
+    
     // Prepare context information (will be passed to the callback functions)
     CallbackContext *context = (CallbackContext *)malloc(sizeof(CallbackContext));
     context->manager = this;
@@ -304,13 +326,13 @@ JoystickManager::MatchingCallback(void *inContext, IOReturn inResult, void *inSe
     // Register callback functions
 	IOHIDDeviceRegisterRemovalCallback( inIOHIDDeviceRef, RemoveCallback_static, (void *)context);
 	IOHIDDeviceRegisterInputValueCallback( inIOHIDDeviceRef, InputValueCallback_static, (void *)context); 
-	
-    // Add proxy object to list of connected USB joysticks
-    addJoystickProxyWithLocationID(devInfo.GetLocationID(), new JoystickManagerProxy());
-    [_proxy putMessage:MSG_JOYSTICK_ATTACHED];
     
-	NSLog(@"Successfully opened device %s (ID %d)\n",
-          devInfo.GetName(), devInfo.GetLocationID());
+    // Add proxy object to list of connected USB joysticks
+    if (addJoystickProxyWithLocationID(devInfo.GetLocationID())) {
+        [_proxy putMessage:MSG_JOYSTICK_ATTACHED];
+        NSLog(@"Successfully opened device %s (ID %d)\n",
+              devInfoName ? devInfoName : "", devInfo.GetLocationID());
+    }
 }
 
 void 
@@ -325,15 +347,16 @@ JoystickManager::RemoveCallback_static(void *inContext, IOReturn inResult, void 
 void 
 JoystickManager::RemoveCallback(void *inContext, IOReturn inResult, void *inSender)
 {
-    JoystickManagerProxy *proxy;
+    USBJoystick *proxy;
     
     // NSLog(@"%s", __PRETTY_FUNCTION__);
     
 	IOHIDDeviceInfo devInfo = IOHIDDeviceInfo((IOHIDDeviceRef)inSender);
-	    
+    char *devInfoName = devInfo.GetName();
+    
 	if(inResult != kIOReturnSuccess) {
 		NSLog(@"Device %s (ID %d) is not in successful state (%i)\n",
-              devInfo.GetName(), devInfo.GetLocationID(), inResult);
+              devInfoName ? devInfoName : "", devInfo.GetLocationID(), inResult);
 		return;
 	}
     
@@ -341,7 +364,7 @@ JoystickManager::RemoveCallback(void *inContext, IOReturn inResult, void *inSend
     
     if(proxy == NULL) {
 		NSLog(@"Device %s (ID %d) not found in open list\n",
-              devInfo.GetName(), devInfo.GetLocationID());
+              devInfoName ? devInfoName : "", devInfo.GetLocationID());
 		return;
 	}
 	
@@ -353,7 +376,7 @@ JoystickManager::RemoveCallback(void *inContext, IOReturn inResult, void *inSend
     [_proxy putMessage:MSG_JOYSTICK_REMOVED];
 
     NSLog(@"Successfully closed device %s (ID %d)\n",
-          devInfo.GetName(), devInfo.GetLocationID());
+          devInfoName ? devInfoName : "", devInfo.GetLocationID());
 }
 
 void 
@@ -379,7 +402,7 @@ JoystickManager::InputValueCallback(void *inContext, IOReturn inResult, void *in
 		return;
 	}
 	
-    JoystickManagerProxy *proxy = getJoystickProxyWithLocationID(context->locationID);
+    USBJoystick *proxy = getJoystickProxyWithLocationID(context->locationID);
     if (proxy == NULL) {
 		NSLog(@"Device %p (ID %d) not found in open list\n",
               context->deviceRef, context->locationID);
@@ -399,7 +422,7 @@ JoystickManager::InputValueCallback(void *inContext, IOReturn inResult, void *in
 			IOHIDElement_SetDoubleProperty(element, CFSTR(kIOHIDElementCalibrationGranularityKey), 1);
 			bool pressed = ( ceil( IOHIDValueGetScaledValue( inIOHIDValueRef, kIOHIDValueScaleTypeCalibrated ) ) == 1 );
 			
-			proxy->ChangeButton(elementUsage, pressed);
+			proxy->setButtonPressed(pressed);
         } else {
 			NSLog(@"Device %p (ID %d) type and page mismatch (Type=%i, Page=%i)\n",
                   context->deviceRef, context->locationID, elementType, elementPage );
@@ -410,30 +433,26 @@ JoystickManager::InputValueCallback(void *inContext, IOReturn inResult, void *in
 		if( elementPage == kHIDPage_GenericDesktop )
 		{
 			// set values to conform to -1 / 0 / 1
-			IOHIDElement_SetDoubleProperty( element, CFSTR( kIOHIDElementCalibrationMinKey ), -1 );
-			IOHIDElement_SetDoubleProperty( element, CFSTR( kIOHIDElementCalibrationMaxKey ), 1 );
-			IOHIDElement_SetDoubleProperty( element, CFSTR( kIOHIDElementCalibrationGranularityKey ), 1 );
+			IOHIDElement_SetDoubleProperty( element, CFSTR(kIOHIDElementCalibrationMinKey), -1 );
+			IOHIDElement_SetDoubleProperty( element, CFSTR(kIOHIDElementCalibrationMaxKey), 1 );
+			IOHIDElement_SetDoubleProperty( element, CFSTR(kIOHIDElementCalibrationGranularityKey), 1 );
 			int axis = ceil( IOHIDValueGetScaledValue( inIOHIDValueRef, kIOHIDValueScaleTypeCalibrated ) );
 			
-			switch( elementUsage )
-			{
-				case kHIDUsage_GD_X:
-					if( axis == -1 )
-						proxy->ChangeAxisX(JOYSTICK_AXIS_X_LEFT);
-					else if( axis == 1 )
-						proxy->ChangeAxisX(JOYSTICK_AXIS_X_RIGHT);
-					else
-						proxy->ChangeAxisX(JOYSTICK_AXIS_X_NONE);
+			switch(elementUsage) {
+
+                case kHIDUsage_GD_X:
+                    
+                    proxy->setAxisX(axis == -1 ? JOYSTICK_LEFT :
+                                    (axis == 1 ? JOYSTICK_RIGHT : JOYSTICK_RELEASED));
 					break;
-				case kHIDUsage_GD_Y:
-					if( axis == -1 )
-						proxy->ChangeAxisY(JOYSTICK_AXIS_Y_UP);
-					else if( axis == 1 )
-						proxy->ChangeAxisY(JOYSTICK_AXIS_Y_DOWN);
-					else
-						proxy->ChangeAxisY(JOYSTICK_AXIS_Y_NONE);
-					break;
-				default:
+
+                case kHIDUsage_GD_Y:
+                                       
+                    proxy->setAxisY(axis == -1 ? JOYSTICK_UP :
+                                    (axis == 1 ? JOYSTICK_DOWN : JOYSTICK_RELEASED));
+                    break;
+
+                default:
 					NSLog(@"Device %p (ID %d) page and page usage mismatch (Type=%i, Page=%i)\n",
                           context->deviceRef, context->locationID, elementPage, elementUsage);
 			}
@@ -456,58 +475,3 @@ JoystickManager::IOHIDElement_SetDoubleProperty(IOHIDElementRef element, CFStrin
 }
 
 
-// ---------------------------------------------------------------------------------------------
-//                                             IOHIDDeviceInfo
-// ---------------------------------------------------------------------------------------------
-
-IOHIDDeviceInfo::IOHIDDeviceInfo()
-{
-    _name = NULL;
-    _locationID = 0;
-}
-
-IOHIDDeviceInfo::IOHIDDeviceInfo(const IOHIDDeviceInfo &copy)
-{
-	if(copy._name)
-	{
-		size_t len = strlen(copy._name);
-		_name = new char[len + 1];
-		strncpy(_name, copy._name, len);
-	}
-	
-	_locationID = copy._locationID;
-}
-
-IOHIDDeviceInfo::IOHIDDeviceInfo(IOHIDDeviceRef device)
-{
-	CFTypeRef typeRef;
-
-    _name = NULL;
-    _locationID = 0;
-
-    if (device == NULL) {
-        NSLog(@"IOHIDDeviceRef == NULL");
-        return;
-    }
-             
-	if((typeRef = IOHIDDeviceGetProperty(device, CFSTR(kIOHIDProductKey)))) {
-
-        if (CFStringGetTypeID() == CFGetTypeID(typeRef)) {
-            CFIndex len = CFStringGetLength( (CFStringRef) typeRef ) + 1;
-		
-            _name = new char[ len ];
-            _name[ len - 1 ] = 0;
-		
-            CFStringGetCString((CFStringRef)typeRef, _name, len, kCFStringEncodingMacRoman);
-        }
-    }
-	
-	if((typeRef = IOHIDDeviceGetProperty( device, CFSTR( kIOHIDLocationIDKey)))  &&  (CFNumberGetTypeID() == CFGetTypeID(typeRef)))
-		CFNumberGetValue((CFNumberRef)typeRef, kCFNumberIntType, &_locationID);
-}
-
-IOHIDDeviceInfo::~IOHIDDeviceInfo()
-{
-	if(_name)
-		delete [] _name;
-}

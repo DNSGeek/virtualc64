@@ -24,7 +24,7 @@
 
 @implementation CPUProxy
 
-- (id) initWithCPU:(CPU *)c
+- (instancetype) initWithCPU:(CPU *)c
 {
     self = [super init];	
 	cpu = c;	
@@ -86,7 +86,7 @@
 
 @implementation MemoryProxy
 
-- (id) initWithMemory:(Memory *)m
+- (instancetype) initWithMemory:(Memory *)m
 {
     self = [super init];	
 	mem = m;	
@@ -110,7 +110,7 @@
 
 @implementation VICProxy
 
-- (id) initWithVIC:(VIC *)v
+- (instancetype) initWithVIC:(VIC *)v
 {
     self = [super init];	
 	vic = v;	
@@ -143,7 +143,7 @@
 - (int) displayMode { return vic->getDisplayMode(); }
 - (void) setDisplayMode:(int)mode { vic->setDisplayMode((DisplayMode)mode); }
 - (int) screenGeometry { return (int)vic->getScreenGeometry(); }
-- (void) setScreenGeometry:(int)mode { vic->setScreenGeometry((VIC::ScreenGeometry)mode); }
+- (void) setScreenGeometry:(int)mode { vic->setScreenGeometry((ScreenGeometry)mode); }
 - (int) horizontalRasterScroll { return vic->getHorizontalRasterScroll(); }
 - (void) setHorizontalRasterScroll:(int)offset { vic->setHorizontalRasterScroll(offset & 0x07); }
 - (int) verticalRasterScroll { return vic->getVerticalRasterScroll(); }
@@ -203,7 +203,7 @@
 
 @implementation CIAProxy
 
-- (id) initWithCIA:(CIA *)c
+- (instancetype) initWithCIA:(CIA *)c
 {
     self = [super init];	
 	cia = c;	
@@ -290,7 +290,7 @@
 
 @implementation KeyboardProxy
 
-- (id) initWithKeyboard:(Keyboard *)kb
+- (instancetype) initWithKeyboard:(Keyboard *)kb
 {
     self = [super init];	
 	keyboard = kb;	
@@ -298,10 +298,14 @@
 }
 
 - (void) dump { keyboard->dumpState(); }
-- (void) pressKey:(char)c { keyboard->pressKey(c); }
-- (void) releaseKey:(char)c { keyboard->releaseKey(c); }
+- (void) pressKey:(int)c { keyboard->pressKey(c); }
+- (void) releaseKey:(int)c { keyboard->releaseKey(c); }
 - (void) pressRunstopKey { keyboard->pressRunstopKey(); }
 - (void) releaseRunstopKey { keyboard->releaseRunstopKey(); }
+- (void) pressShiftRunstopKey { keyboard->pressShiftRunstopKey(); }
+- (void) releaseShiftRunstopKey { keyboard->releaseShiftRunstopKey(); }
+- (void) pressRestoreKey { keyboard->pressRestoreKey(); }
+- (void) releaseRestoreKey { keyboard->releaseRestoreKey(); }
 - (void) pressCommodoreKey { keyboard->pressCommodoreKey(); }
 - (void) releaseCommodoreKey { keyboard->releaseCommodoreKey(); }
 - (void) pressClearKey { keyboard->pressClearKey(); }
@@ -313,28 +317,40 @@
 
 - (void)typeText:(NSString *)text
 {
-    const unsigned MAXCHARS = 64;
+    [self typeText:text withDelay:0];
+}
+
+- (void)typeText:(NSString *)text withDelay:(int)delay
+{    
+    dispatch_async(dispatch_get_global_queue( DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),
+                   ^{ [self _typeText:text withDelay:delay]; });
+}
+
+- (void)_typeText:(NSString *)text withDelay:(int)delay
+{
+    const unsigned MAXCHARS = 256;
     const unsigned KEYDELAY = 27500;
     unsigned i;
     
-    fprintf(stderr,"Typing: ");
-    
+    fprintf(stderr, "Typing: ");
+
+    usleep(delay);
     for (i = 0; i < [text length] && i < MAXCHARS; i++) {
-        
+            
         unichar uc = [text characterAtIndex:i];
         char c = (char)uc;
-        
+            
         if (isupper(c))
             c = tolower(c);
-        
-        fprintf(stderr,"%c",c);
-        
+            
+        fprintf(stderr, "%c",c);
+            
+        usleep(KEYDELAY);
         [self pressKey:c];
         usleep(KEYDELAY);
         [self releaseKey:c];
-        usleep(KEYDELAY);
     }
-    
+        
     if (i != [text length]) {
         // Abbreviate text by three dots
         for (i = 0; i < 3; i++) {
@@ -344,9 +360,10 @@
             usleep(KEYDELAY);
         }
     }
-
+        
     fprintf(stderr,"\n");
 }
+
 
 @end
 
@@ -354,14 +371,37 @@
 //                                 Joystick
 // -------------------------------------------------------------------------
 
+#if 0
+@implementation JoystickManagerProxy
+
+- (instancetype) initWithC64:(C64Proxy *)c64
+{
+    self = [super init];
+    manager = new JoystickManager(c64);
+    if (!manager->initialize()) {
+        NSLog(@"WARNING: Failed to initialize joystick manager.");
+        self = nil;
+    }
+
+    return self;
+    return nil;
+}
+
+@end
+#endif
+
 @implementation JoystickProxy
 
-- (id) initWithJoystick:(Joystick *)joy
+- (instancetype) initWithJoystick:(Joystick *)joy
 {
     self = [super init];
     joystick = joy;
     return self;
 }
+
+- (void) setButtonPressed:(BOOL)pressed { joystick->setButtonPressed(pressed); }
+- (void) setAxisX:(JoystickDirection)state { joystick->setAxisX(state); }
+- (void) setAxisY:(JoystickDirection)state {joystick->setAxisY(state); }
 
 - (void) dump { joystick->dumpState(); }
 
@@ -373,7 +413,7 @@
 
 @implementation SIDProxy
 
-- (id) initWithSID:(SIDWrapper *)s
+- (instancetype) initWithSID:(SIDWrapper *)s
 {
     self = [super init];	
 	sid = s;	
@@ -390,7 +430,7 @@
 
 @implementation IECProxy
 
-- (id) initWithIEC:(IEC *)bus
+- (instancetype) initWithIEC:(IEC *)bus
 {
     self = [super init];	
 	iec = bus;	
@@ -412,7 +452,7 @@
 
 @implementation ExpansionPortProxy
 
-- (id) initWithExpansionPort:(ExpansionPort *)port
+- (instancetype) initWithExpansionPort:(ExpansionPort *)port
 {
     self = [super init];
     expansionPort = port;
@@ -433,7 +473,7 @@
 
 @implementation VIAProxy
 
-- (id) initWithVIA:(VIA6522 *)v
+- (instancetype) initWithVIA:(VIA6522 *)v
 {
     self = [super init];	
 	via = v;
@@ -446,22 +486,45 @@
 
 @end
 
-// --------------------------------------------------------------------------
+// -------------------------------------------------------------------------
+//                                5,25" diskette
+// -------------------------------------------------------------------------
+
+@implementation Disk525Proxy
+
+- (instancetype) initWithDisk525:(Disk525 *)d
+{
+    self = [super init];
+    disk = d;
+    return self;
+}
+
+- (BOOL)isWriteProtected { return disk->isWriteProtected(); }
+- (void)setWriteProtection:(BOOL)b { disk->setWriteProtection(b); }
+- (BOOL)isModified { return disk->isModified(); }
+- (void)setModified:(BOOL)b { disk->setModified(b); }
+- (NSInteger)numTracks { return (NSInteger)disk->numTracks; }
+
+
+@end
+
+// -------------------------------------------------------------------------
 //                                    VC1541
 // -------------------------------------------------------------------------
 
 @implementation VC1541Proxy
 
-@synthesize cpu, mem, via1, via2;
+@synthesize cpu, mem, via1, via2, disk;
 
-- (id) initWithVC1541:(VC1541 *)vc
+- (instancetype) initWithVC1541:(VC1541 *)vc
 {
     self = [super init];	
 	vc1541 = vc;
-	cpu = [[CPUProxy alloc] initWithCPU:vc->cpu];
-	mem = [[MemoryProxy alloc] initWithMemory:vc->mem];
+	cpu = [[CPUProxy alloc] initWithCPU:&vc->cpu];
+	mem = [[MemoryProxy alloc] initWithMemory:&vc->mem];
 	via1 = [[VIAProxy alloc] initWithVIA:&vc->via1];
 	via2 = [[VIAProxy alloc] initWithVIA:&vc->via2];
+    disk = [[Disk525Proxy alloc] initWithDisk525:&vc->disk];
 	return self;
 }
 
@@ -482,6 +545,7 @@
 - (void) setTraceMode:(bool)b { vc1541->setTraceMode(b); }
 - (bool) hasRedLED { return vc1541->getRedLED(); }
 - (bool) hasDisk { return vc1541->hasDisk(); }
+- (void) ejectDisk { vc1541->ejectDisk(); }
 - (bool) writeProtection { return vc1541->disk.isWriteProtected(); }
 - (void) setWriteProtection:(bool)b { vc1541->disk.setWriteProtection(b); }
 - (bool) DiskModified { return vc1541->disk.isModified(); }
@@ -491,8 +555,12 @@
 - (bool) soundMessagesEnabled { return vc1541->soundMessagesEnabled(); }
 - (void) setSendSoundMessages:(bool)b { vc1541->setSendSoundMessages(b); }
 - (bool) exportToD64:(NSString *)path { return vc1541->exportToD64([path UTF8String]); }
-- (D64Archive *) archiveFromDrive { return D64Archive::archiveFromDrive(vc1541); }
-- (void) ejectDisk { vc1541->ejectDisk(); }
+
+- (D64ArchiveProxy *) convertToD64
+{
+    D64Archive *archive = vc1541->convertToD64();
+    return archive ? [[D64ArchiveProxy alloc] initWithArchive:archive] : nil;
+}
 
 - (void) playSound:(NSString *)name volume:(float)v
 {
@@ -504,15 +572,46 @@
 @end
 
 // --------------------------------------------------------------------------
-//                                     C64
+//                                    Datasette
 // -------------------------------------------------------------------------
+
+@implementation DatasetteProxy
+
+- (instancetype) initWithDatasette:(Datasette *)ds
+{
+    self = [super init];
+    datasette = ds;
+    return self;
+}
+
+- (void) dump { datasette->dumpState(); }
+- (bool) hasTape { return datasette->hasTape(); }
+- (void) pressPlay { datasette->pressPlay(); }
+- (void) pressStop { datasette->pressStop(); }
+- (void) pressRewind { datasette->rewind(); }
+- (void) ejectTape { datasette->ejectTape(); }
+- (NSInteger) getType { return datasette->getType(); }
+- (long) durationInCycles { return datasette->getDurationInCycles(); }
+- (int) durationInSeconds { return datasette->getDurationInSeconds(); }
+- (int) head { return datasette->getHead(); }
+- (long) headInCycles { return datasette->getHeadInCycles(); }
+- (int) headInSeconds { return datasette->getHeadInSeconds(); }
+- (void) setHeadInCycles:(long)value { datasette->setHeadInCycles(value); }
+- (BOOL) motor { return datasette->getMotor(); }
+- (BOOL) playKey { return datasette->getPlayKey(); }
+@end
+
+// --------------------------------------------------------------------------
+//                                     C64
+// --------------------------------------------------------------------------
 
 @implementation C64Proxy
 
-@synthesize c64, cpu, mem, vic, cia1, cia2, sid, keyboard, joystick1, joystick2, iec, expansionport, vc1541;
-@synthesize iecBusIsBusy;
+@synthesize cpu, mem, vic, cia1, cia2, sid, keyboard, iec, expansionport, vc1541, datasette;
+@synthesize joystickA, joystickB; 
+@synthesize iecBusIsBusy, tapeBusIsBusy;
 
-- (id) init
+- (instancetype) init
 {
 	NSLog(@"C64Proxy::init");
 	
@@ -522,23 +621,30 @@
 	c64 = new C64();
 	
 	// Create sub proxys
-	cpu = [[CPUProxy alloc] initWithCPU:c64->cpu];
-    // cpu = [[CPUProxy alloc] initWithCPU:c64->floppy->cpu];
-	mem = [[MemoryProxy alloc] initWithMemory:c64->mem];
-	vic = [[VICProxy alloc] initWithVIC:c64->vic];
-	cia1 = [[CIAProxy alloc] initWithCIA:c64->cia1];
-	cia2 = [[CIAProxy alloc] initWithCIA:c64->cia2];
-	sid = [[SIDProxy alloc] initWithSID:c64->sid];
-	keyboard = [[KeyboardProxy alloc] initWithKeyboard:c64->keyboard];
-    joystick1 = [[JoystickProxy alloc] initWithJoystick:c64->joystick1];
-    joystick2 = [[JoystickProxy alloc] initWithJoystick:c64->joystick2];
-    iec = [[IECProxy alloc] initWithIEC:c64->iec];
-    expansionport = [[ExpansionPortProxy alloc] initWithExpansionPort:c64->expansionport];
-	vc1541 = [[VC1541Proxy alloc] initWithVC1541:c64->floppy];
-	
+	cpu = [[CPUProxy alloc] initWithCPU:&c64->cpu];
+    // cpu = [[CPUProxy alloc] initWithCPU:&c64->floppy->cpu];
+	mem = [[MemoryProxy alloc] initWithMemory:&c64->mem];
+	vic = [[VICProxy alloc] initWithVIC:&c64->vic];
+	cia1 = [[CIAProxy alloc] initWithCIA:&c64->cia1];
+	cia2 = [[CIAProxy alloc] initWithCIA:&c64->cia2];
+	sid = [[SIDProxy alloc] initWithSID:&c64->sid];
+	keyboard = [[KeyboardProxy alloc] initWithKeyboard:&c64->keyboard];
+    joystickA = [[JoystickProxy alloc] initWithJoystick:&c64->joystickA];
+    joystickB = [[JoystickProxy alloc] initWithJoystick:&c64->joystickB];
+    iec = [[IECProxy alloc] initWithIEC:&c64->iec];
+    expansionport = [[ExpansionPortProxy alloc] initWithExpansionPort:&c64->expansionport];
+	vc1541 = [[VC1541Proxy alloc] initWithVC1541:&c64->floppy];
+    datasette = [[DatasetteProxy alloc] initWithDatasette:&c64->datasette];
+
+    // Initialize Joystick HID interface
+    if (!(joystickManager = new JoystickManager(self))) {
+        NSLog(@"WARNING: Couldn't initialize HID interface.");
+    }
+    joystickManager->initialize(); 
+
 	// Initialize CoreAudio sound interface
 	if (!(audioDevice = [[AudioDevice alloc] initWithC64:c64])) {
-		NSLog(@"WARNING: Couldn't initialize AudioDevice. Sound disabled.");
+		NSLog(@"WARNING: Couldn't initialize CoreAudio interface. Sound disabled.");
 	}
 		
     return self;
@@ -557,6 +663,10 @@
 	[self disableAudio];
 	audioDevice = nil;
 	
+    // Delete HDI interface
+    delete joystickManager;
+    joystickManager = NULL;
+    
     // Delete emulator
     delete c64;
 	c64 = NULL;
@@ -570,9 +680,9 @@
 - (void) setSamplingMethod:(int)value { c64->setSamplingMethod((sampling_method)value); }
 - (int) chipModel { return (chip_model)(c64->getChipModel()); }
 - (void) setChipModel:(int)value {c64->setChipModel((chip_model)value); }
-- (void) rampUp { c64->sid->rampUp(); }
-- (void) rampUpFromZero { c64->sid->rampUpFromZero(); }
-- (void) rampDown { c64->sid->rampDown(); }
+- (void) rampUp { c64->sid.rampUp(); }
+- (void) rampUpFromZero { c64->sid.rampUpFromZero(); }
+- (void) rampDown { c64->sid.rampDown(); }
 
 - (void) _loadFromSnapshot:(Snapshot *)snapshot
 {
@@ -581,7 +691,7 @@
     c64->resume();
 }
 
-- (void) loadFromSnapshot:(V64Snapshot *)snapshot 
+- (void) loadFromSnapshot:(SnapshotProxy *)snapshot
 {
     [self _loadFromSnapshot:[snapshot snapshot]];
 }
@@ -593,7 +703,7 @@
     c64->resume();
 }
 
-- (void) saveToSnapshot:(V64Snapshot *)snapshot 
+- (void) saveToSnapshot:(SnapshotProxy *)snapshot
 {
     [self _saveToSnapshot:[snapshot snapshot]];
 }
@@ -621,13 +731,13 @@
 
 //- (int) numberOfMissingRoms { return c64->numberOfMissingRoms(); }
 - (uint8_t) missingRoms { return c64->getMissingRoms(); }
-- (bool) isBasicRom:(NSString *)filename { return c64->mem->isBasicRom([filename UTF8String]); }
+- (bool) isBasicRom:(NSString *)filename { return c64->mem.isBasicRom([filename UTF8String]); }
 - (bool) loadBasicRom:(NSString *)filename { return [self isBasicRom:filename] && c64->loadRom([filename UTF8String]); }
-- (bool) isCharRom:(NSString *)filename { return c64->mem->isCharRom([filename UTF8String]); }
+- (bool) isCharRom:(NSString *)filename { return c64->mem.isCharRom([filename UTF8String]); }
 - (bool) loadCharRom:(NSString *)filename { return [self isCharRom:filename] && c64->loadRom([filename UTF8String]); }
-- (bool) isKernelRom:(NSString *)filename { return c64->mem->isKernelRom([filename UTF8String]); }
+- (bool) isKernelRom:(NSString *)filename { return c64->mem.isKernelRom([filename UTF8String]); }
 - (bool) loadKernelRom:(NSString *)filename { return [self isKernelRom:filename] && c64->loadRom([filename UTF8String]); }
-- (bool) isVC1541Rom:(NSString *)filename { return c64->floppy->mem->is1541Rom([filename UTF8String]); }
+- (bool) isVC1541Rom:(NSString *)filename { return c64->floppy.mem.is1541Rom([filename UTF8String]); }
 - (bool) loadVC1541Rom:(NSString *)filename { return [self isVC1541Rom:filename] && c64->loadRom([filename UTF8String]); }
 - (bool) isRom:(NSString *)filename { return [self isBasicRom:filename] || [self isCharRom:filename] || [self isKernelRom:filename] || [self isVC1541Rom:filename]; }
 - (bool) loadRom:(NSString *)filename { return [self loadBasicRom:filename] || [self loadCharRom:filename] || [self loadKernelRom:filename] || [self loadVC1541Rom:filename]; }
@@ -636,8 +746,10 @@
 - (void) detachCartridge { c64->detachCartridge(); }
 - (bool) isCartridgeAttached { return c64->isCartridgeAttached(); }
 
-- (bool) mountArchive:(D64Archive *)a { return c64->mountArchive(a); }
-- (bool) flushArchive:(Archive *)a item:(int)nr { return c64->flushArchive(a,nr); }
+- (bool) mountArchive:(ArchiveProxy *)a { return c64->mountArchive([a archive]); }
+- (bool) flushArchive:(ArchiveProxy *)a item:(int)nr { return c64->flushArchive([a archive], nr); }
+
+- (bool) insertTape:(TAPContainerProxy *)c { return c64->insertTape([c container]); }
 
 - (bool) warp { return c64->getWarp(); }
 - (void) setWarp:(bool)b { c64->setWarp(b); }	
@@ -675,28 +787,29 @@
 - (bool)revertToHistoricSnapshot:(int)nr { Snapshot *s = c64->getHistoricSnapshot(nr); return s ? c64->loadFromSnapshot(s), true : false; }
 
 // Joystick
-- (Joystick *) joystick:(int)nr { assert(nr == 1 || nr == 2); return (nr == 1) ? c64->joystick1 : c64->joystick2; }
+- (BOOL)joystickIsPluggedIn:(int)nr { return joystickManager->joystickIsPluggedIn(nr); }
+- (void)bindJoystickToPortA:(int)nr { joystickManager->bindJoystickToPortA(nr); }
+- (void)bindJoystickToPortB:(int)nr { joystickManager->bindJoystickToPortB(nr); }
+- (void)unbindJoysticksFromPortA { joystickManager->unbindJoysticksFromPortA(); }
+- (void)unbindJoysticksFromPortB { joystickManager->unbindJoysticksFromPortB(); }
 
 // Audio hardware
 - (void) enableAudio { [self rampUpFromZero]; [audioDevice startPlayback]; }
 - (void) disableAudio {	[self rampDown]; [audioDevice stopPlayback]; }
 
-// User triggered interrupts
-- (void) keyboardPressRunstopRestore { c64->runstopRestore(); }
-
 @end
 
 // --------------------------------------------------------------------------
-//                                  Snapshot
+//                         Snapshot (needs testing)
 // --------------------------------------------------------------------------
 
-@implementation V64Snapshot
+@implementation SnapshotProxy
 
 @synthesize snapshot;
 
-- (id) init
+- (instancetype) init
 {
-	// NSLog(@"V64Snapshot::init");
+	NSLog(@"V64Snapshot::init");
 	
 	if (!(self = [super init]))
 		return nil;
@@ -705,57 +818,265 @@
 	return self;
 }
 
-- (id) initWithSnapshot:(Snapshot *)s
+- (instancetype) initWithSnapshot:(Snapshot *)s
 {
-	// NSLog(@"V64Snapshot::initWithSnapshot");
-	
-	if (!(self = [super init]))
-		return nil;
-	
-	snapshot = s;
-	return self;
+    NSLog(@"V64Snapshot::initWithSnapshot %p", s);
+    
+    if (s == nil)
+        return nil;
+    
+    if (!(self = [super init]))
+        return nil;
+    
+    snapshot = s;
+    return self;
 }
 
 - (void) dealloc
 {	
-	// NSLog(@"V64Snapshot::dealloc");
+	NSLog(@"V64Snapshot::dealloc");
 
 	if (snapshot)
 		delete snapshot;
 	
 }
 
-+ (id) snapshotFromC64:(C64Proxy *)c64
++ (instancetype) snapshotFromSnapshot:(Snapshot *)snapshot
 {
-	V64Snapshot *newSnapshot = [[self alloc] init];
-	[c64 saveToSnapshot:newSnapshot];
-	return newSnapshot;
+    if (snapshot == NULL)
+        return nil;
+    
+    SnapshotProxy *newSnapshot = [[self alloc] initWithSnapshot:snapshot];
+    return newSnapshot;
 }
 
-+ (id) snapshotFromSnapshot:(Snapshot *)snapshot
++ (instancetype) snapshotFromFile:(NSString *)path
 {
-	if (snapshot == NULL)
-		return nil;
-	
-	V64Snapshot *newSnapshot = [[self alloc] initWithSnapshot:snapshot];
-	return newSnapshot;
-}
-	
-+ (id) snapshotFromFile:(NSString *)path
-{
-	return [self snapshotFromSnapshot:Snapshot::snapshotFromFile([path UTF8String])];
+    return [self snapshotFromSnapshot:(Snapshot::snapshotFromFile([path UTF8String]))];
 }
 
-+ (id) snapshotFromBuffer:(const void *)buffer length:(unsigned)length
++ (instancetype) snapshotFromBuffer:(const void *)buffer length:(unsigned)length
 {
-	return [self snapshotFromSnapshot:Snapshot::snapshotFromBuffer((uint8_t *)buffer, length)];
+    return [self snapshotFromSnapshot:(Snapshot::snapshotFromBuffer((uint8_t *)buffer, length))];
 }
 
-- (unsigned char *)imageData { return snapshot->getImageData(); }
-- (time_t)timeStamp { return snapshot->getTimestamp(); }
 - (bool) readDataFromFile:(NSString *)path { return snapshot->readFromFile([path UTF8String]); }
 - (bool) writeDataToFile:(NSString *)path { return snapshot->writeToFile([path UTF8String]); }
 
 @end
 
-	
+// --------------------------------------------------------------------------
+//                           Archive (incomplete)
+// --------------------------------------------------------------------------
+
+@implementation ArchiveProxy
+
+@synthesize archive;
+
+- (instancetype)initWithArchive:(Archive *)a
+{
+    NSLog(@"ArchiveProxy::initWithArchive %p", archive);
+
+    if (a == nil)
+        return nil;
+    
+    if (!(self = [super init]))
+        return nil;
+    
+    archive = a;
+
+    return self;
+}
+
+- (void)dealloc
+{
+    NSLog(@"ArchiveProxy %p deleted", archive);
+    
+    if (archive)
+        delete archive;
+}
+
+- (NSString *)getPath { return [NSString stringWithUTF8String:archive->getPath()]; }
+- (NSString *)getName { return [NSString stringWithUTF8String:archive->getName()]; }
+- (NSInteger)getType { return (NSInteger)archive->getType(); }
+- (NSInteger)getNumberOfItems { return (NSInteger)archive->getNumberOfItems(); }
+- (BOOL)writeToFile:(NSString *)filename { return archive->writeToFile([filename UTF8String]); }
+
+@end
+
+
+@implementation T64ArchiveProxy
+
++ (BOOL)isT64File:(NSString *)filename
+{
+    return T64Archive::isT64File([filename UTF8String]);
+}
+
++ (instancetype)archiveFromT64File:(NSString *)filename
+{
+    T64Archive *archive = T64Archive::archiveFromT64File([filename UTF8String]);
+    return archive ? [[T64ArchiveProxy alloc] initWithArchive:archive] : nil;
+}
+
++ (instancetype)archiveFromArchive:(ArchiveProxy *)otherArchive
+{
+    T64Archive *archive = T64Archive::archiveFromArchive([otherArchive archive]);
+    return archive ? [[T64ArchiveProxy alloc] initWithArchive:archive] : nil;
+}
+
+@end
+
+
+@implementation D64ArchiveProxy
+
++ (BOOL) isD64File:(NSString *)filename
+{
+   return D64Archive::isD64File([filename UTF8String]);
+}
+
++ (instancetype) archiveFromD64File:(NSString *)filename
+{
+    D64Archive *archive = D64Archive::archiveFromD64File([filename UTF8String]);
+    return archive ? [[D64ArchiveProxy alloc] initWithArchive:archive] : nil;
+}
+
++ (instancetype) archiveFromArbitraryFile:(NSString *)filename
+{
+    D64Archive *archive = D64Archive::archiveFromArbitraryFile([filename UTF8String]);
+    return archive ? [[D64ArchiveProxy alloc] initWithArchive:archive] : nil;
+}
+
++ (instancetype) archiveFromD64Archive:(D64ArchiveProxy *)otherArchive
+{
+    D64Archive *archive = D64Archive::archiveFromD64Archive((D64Archive *)[otherArchive archive]);
+    return archive ? [[D64ArchiveProxy alloc] initWithArchive:archive] : nil;
+}
+
++ (instancetype) archiveFromArchive:(ArchiveProxy *)otherArchive
+{
+    D64Archive *archive = D64Archive::archiveFromArchive([otherArchive archive]);
+    return archive ? [[D64ArchiveProxy alloc] initWithArchive:archive] : nil;
+}
+
+@end
+
+
+@implementation PRGArchiveProxy
+
++ (BOOL)isPRGFile:(NSString *)filename
+{
+    return PRGArchive::isPRGFile([filename UTF8String]);
+}
+
++ (instancetype)archiveFromPRGFile:(NSString *)filename
+{
+    PRGArchive *archive = PRGArchive::archiveFromPRGFile([filename UTF8String]);
+    return archive ? [[PRGArchiveProxy alloc] initWithArchive:archive] : nil;
+}
+
++ (instancetype)archiveFromArchive:(ArchiveProxy *)otherArchive
+{
+    PRGArchive *archive = PRGArchive::archiveFromArchive([otherArchive archive]);
+    return archive ? [[PRGArchiveProxy alloc] initWithArchive:archive] : nil;
+}
+
+@end
+
+
+@implementation P00ArchiveProxy
+
++ (BOOL)isP00File:(NSString *)filename
+{
+    return P00Archive::isP00File([filename UTF8String]);
+}
+
++ (instancetype)archiveFromP00File:(NSString *)filename
+{
+    P00Archive *archive = P00Archive::archiveFromP00File([filename UTF8String]);
+    return archive ? [[P00ArchiveProxy alloc] initWithArchive:archive] : nil;
+}
+
++ (instancetype)archiveFromArchive:(ArchiveProxy *)otherArchive
+{
+    P00Archive *archive = P00Archive::archiveFromArchive([otherArchive archive]);
+    return archive ? [[P00ArchiveProxy alloc] initWithArchive:archive] : nil;
+}
+
+@end
+
+
+@implementation G64ArchiveProxy
+
++ (BOOL) isG64File:(NSString *)filename
+{
+    return G64Archive::isG64File([filename UTF8String]);
+}
+
++ (instancetype) archiveFromG64File:(NSString *)filename
+{
+    G64Archive *archive = G64Archive::archiveFromG64File([filename UTF8String]);
+    return archive ? [[G64ArchiveProxy alloc] initWithArchive:archive] : nil;
+}
+
+@end
+
+
+@implementation NIBArchiveProxy
+
++ (BOOL) isNIBFile:(NSString *)filename
+{
+    return NIBArchive::isNIBFile([filename UTF8String]);
+}
+
++ (instancetype) archiveFromNIBFile:(NSString *)filename
+{
+    NIBArchive *archive = NIBArchive::archiveFromNIBFile([filename UTF8String]);
+    return archive ? [[NIBArchiveProxy alloc] initWithArchive:archive] : nil;
+}
+
+@end
+
+@implementation TAPContainerProxy
+
+@synthesize container;
+
+- (instancetype) initWithTAPContainer:(TAPArchive *)c
+{
+    NSLog(@"TAPContainerProxy::initWithContainer");
+    
+    if (c == nil)
+        return nil;
+    
+    if (!(self = [super init]))
+        return nil;
+    
+    container = c;
+    return self;
+}
+
+- (void)dealloc
+{
+    NSLog(@"TAPContainerProxy::dealloc");
+    
+    if (container)
+        delete container;
+}
+
++ (BOOL) isTAPFile:(NSString *)filename
+{
+    return TAPArchive::isTAPFile([filename UTF8String]);
+}
+
++ (instancetype) containerFromTAPFile:(NSString *)filename
+{
+    TAPArchive *container = TAPArchive::archiveFromTAPFile([filename UTF8String]);
+    return container ? [[TAPContainerProxy alloc] initWithTAPContainer:container] : nil;
+}
+
+- (NSString *)getPath { return [NSString stringWithUTF8String:container->getPath()]; }
+- (NSString *)getName { return [NSString stringWithUTF8String:container->getName()]; }
+- (NSInteger)getType { return (NSInteger)container->getType(); }
+- (NSInteger)TAPversion { return (NSInteger)container->TAPversion(); }
+
+@end
+

@@ -30,6 +30,20 @@ Container::~Container()
 		free(path);
 }
 
+ContainerType
+Container::typeOf(const char *extension)
+{
+    if (strcmp(extension, "CRT") == 0) return CRT_CONTAINER;
+    if (strcmp(extension, "T64") == 0) return T64_CONTAINER;
+    if (strcmp(extension, "D64") == 0) return D64_CONTAINER;
+    if (strcmp(extension, "PRG") == 0) return PRG_CONTAINER;
+    if (strcmp(extension, "P00") == 0) return P00_CONTAINER;
+    if (strcmp(extension, "G64") == 0) return G64_CONTAINER;
+    if (strcmp(extension, "NIB") == 0) return NIB_CONTAINER;
+    if (strcmp(extension, "TAP") == 0) return TAP_CONTAINER;
+    return (ContainerType)0;
+}
+
 void
 Container::setPath(const char *str)
 {
@@ -95,12 +109,12 @@ Container::readFromFile(const char *filename)
     setPath(filename);
     setName(ChangeExtension(ExtractFilename(getPath()), "").c_str());
     
-    fprintf(stderr, "Container %s (%s) read successfully from file %s\n", name, getName(), path);
+    debug(1, "Container %s (%s) read successfully from file %s\n", name, getName(), path);
 	success = true;
 
 exit:
 	
-	if (file)
+    if (file)
 		fclose(file);
 	if (buffer)
 		free(buffer);
@@ -120,11 +134,15 @@ Container::writeToFile(const char *filename)
 	bool success = false;
 	uint8_t *data = NULL;
 	FILE *file;
-	unsigned filesize = writeToBuffer(NULL);
+	unsigned filesize;
    
-	assert (filename != NULL);
-		
+    // Determine file size
+    filesize = writeToBuffer(NULL);
+    if (filesize == 0)
+        return false;
+    
 	// Open file
+    assert (filename != NULL);
 	if (!(file = fopen(filename, "w"))) {
 		goto exit;
 	}
@@ -149,9 +167,9 @@ Container::writeToFile(const char *filename)
 exit:
 		
 	if (file)
-	fclose(file);
+        fclose(file);
 	if (data)
-	free(data);
+        free(data);
 		
 	return success;
 }

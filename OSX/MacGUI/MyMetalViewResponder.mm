@@ -24,41 +24,26 @@
 //                                  Keyboard events
 // --------------------------------------------------------------------------------
 
-#if 0
-- (BOOL)acceptsFirstResponder
-{
-    return YES;
-}
-
-- (BOOL)resignFirstResponder
-{
-    return YES;
-}
-
-- (BOOL)becomeFirstResonder
-{
-    return YES;
-}
-#endif
-
 - (int)fingerprintForKey:(int)keycode withModifierFlags:(int)flags
 {
+    return keycode;
+    
+#if 0
     // The recorded fingerprint consists of the keycode. If the key is a number key (0 - 9), the
     // fingerprint also contains the NSNumericPadKeyMask flag to distinguish keys from the
     // numeric keypad from "normal" keys.
-    
-    flags &= NSNumericPadKeyMask;
-    
     switch (keycode) {
         case kVK_ANSI_1: case kVK_ANSI_2: case kVK_ANSI_3: case kVK_ANSI_4: case kVK_ANSI_5:
         case kVK_ANSI_6: case kVK_ANSI_7: case kVK_ANSI_8: case kVK_ANSI_9: case kVK_ANSI_0:
             flags &= NSNumericPadKeyMask; // keep NSNumericPadKeyMask flag
+            break;
             
         default:
             flags = 0; // standard case: we only keep the keycode
     }
     
     return keycode | flags;
+#endif
 }
 
 - (int)joyKeycode:(int)nr direction:(JoystickDirection)dir
@@ -119,13 +104,14 @@
         return NO;
     
     unsigned keyset = (d == IPD_KEYSET_1) ? 0 : 1;
-    Joystick *joy = (nr == 1) ? c64->joystick1 : c64->joystick2;
+    // Joystick *joy = (nr == 1) ? &c64->joystick1 : &c64->joystick2;
+    JoystickProxy *j = (nr == 1) ? [c64proxy joystickA] : [c64proxy joystickB];
     
-    if (k == joyKeycode[keyset][JOYSTICK_UP]) { joy->SetAxisY(JOYSTICK_AXIS_Y_UP); return YES; }
-    if (k == joyKeycode[keyset][JOYSTICK_DOWN]) { joy->SetAxisY(JOYSTICK_AXIS_Y_DOWN); return YES; }
-    if (k == joyKeycode[keyset][JOYSTICK_LEFT]) { joy->SetAxisX(JOYSTICK_AXIS_X_LEFT); return YES; }
-    if (k == joyKeycode[keyset][JOYSTICK_RIGHT]) { joy->SetAxisX(JOYSTICK_AXIS_X_RIGHT); return YES; }
-    if (k == joyKeycode[keyset][JOYSTICK_FIRE]) { joy->SetButtonPressed(true); return YES; }
+    if (k == joyKeycode[keyset][JOYSTICK_UP]) { [j setAxisY:JOYSTICK_UP]; return YES; }
+    if (k == joyKeycode[keyset][JOYSTICK_DOWN]) { [j setAxisY:JOYSTICK_DOWN]; return YES; }
+    if (k == joyKeycode[keyset][JOYSTICK_LEFT]) { [j setAxisX:JOYSTICK_LEFT]; return YES; }
+    if (k == joyKeycode[keyset][JOYSTICK_RIGHT]) { [j setAxisX:JOYSTICK_RIGHT]; return YES; }
+    if (k == joyKeycode[keyset][JOYSTICK_FIRE]) { [j setButtonPressed:YES]; return YES; }
     
     return NO;
 }
@@ -138,14 +124,14 @@
         return NO;
     
     unsigned keyset = (d == IPD_KEYSET_1) ? 0 : 1;
-    Joystick *joy = (nr == 1) ? c64->joystick1 : c64->joystick2;
-    
-    if (k == joyKeycode[keyset][JOYSTICK_UP]) { joy->SetAxisY(JOYSTICK_AXIS_NONE); return YES; }
-    if (k == joyKeycode[keyset][JOYSTICK_DOWN]) { joy->SetAxisY(JOYSTICK_AXIS_NONE); return YES; }
-    if (k == joyKeycode[keyset][JOYSTICK_LEFT]) { joy->SetAxisX(JOYSTICK_AXIS_NONE); return YES; }
-    if (k == joyKeycode[keyset][JOYSTICK_RIGHT]) { joy->SetAxisX(JOYSTICK_AXIS_NONE); return YES; }
-    if (k == joyKeycode[keyset][JOYSTICK_FIRE]) { joy->SetButtonPressed(false); return YES; }
-    
+    JoystickProxy *j = (nr == 1) ? [c64proxy joystickA] : [c64proxy joystickB];
+
+    if (k == joyKeycode[keyset][JOYSTICK_UP]) { [j setAxisY:JOYSTICK_RELEASED]; return YES; }
+    if (k == joyKeycode[keyset][JOYSTICK_DOWN]) { [j setAxisY:JOYSTICK_RELEASED]; return YES; }
+    if (k == joyKeycode[keyset][JOYSTICK_LEFT]) { [j setAxisX:JOYSTICK_RELEASED]; return YES; }
+    if (k == joyKeycode[keyset][JOYSTICK_RIGHT]) { [j setAxisX:JOYSTICK_RELEASED]; return YES; }
+    if (k == joyKeycode[keyset][JOYSTICK_FIRE]) { [j setButtonPressed:NO]; return YES; }
+
     return NO;
 }
 
@@ -166,6 +152,8 @@
         case MAC_CR: return Keyboard::C64KEY_CR;
         case MAC_CU: return Keyboard::C64KEY_CU;
         case MAC_CD: return Keyboard::C64KEY_CD;
+        case MAC_ESC: return Keyboard::C64KEY_RUNSTOP;
+        case MAC_TAB: return Keyboard::C64KEY_RESTORE;
         case MAC_HAT: return '^';
         case MAC_TILDE_US: if (plainkey != '<' && plainkey != '>') return Keyboard::C64KEY_ARROW; else break;
     }
@@ -207,15 +195,14 @@
     // Remove alternate key modifier if present
     if (flags & NSAlternateKeyMask)
         c = [[event charactersIgnoringModifiers] UTF8String][0];
-        
-        // Translate key
-        if (!(c64key = [self translateKey:c plainkey:c_unmod keycode:keycode flags:flags]))
-            return;
+
+    // Translate key
+    if (!(c64key = [self translateKey:c plainkey:c_unmod keycode:keycode flags:flags]))
+        return;
     
     // Press key
-    // NSLog(@"Storing key %c for keycode %ld",c64key, (long)keycode);
     pressedKeys[(unsigned char)keycode] = c64key;
-    c64->keyboard->pressKey(c64key);
+    [[c64proxy keyboard] pressKey:c64key];
 }
 
 - (void)keyUp:(NSEvent *)event
@@ -238,7 +225,7 @@
     
     // Release key
     // NSLog(@"Releasing stored key %c for keycode %ld",pressedKeys[keycode], (long)keycode);
-    c64->keyboard->releaseKey(pressedKeys[keycode]);
+    [[c64proxy keyboard] releaseKey:pressedKeys[keycode]];
     pressedKeys[(unsigned char)keycode] = 0;
 }
 
@@ -278,28 +265,6 @@
     if ([self pullJoystick:2 withKeycode:keycode device:[controller inputDeviceB]])
         return;
 }
-
-
-// --------------------------------------------------------------------------------
-//                                      Paste
-// --------------------------------------------------------------------------------
-
-
-- (void)paste:(id)sender
-{
-    NSPasteboard *gpBoard;
-    NSString *text;
-    
-    
-    gpBoard = [NSPasteboard generalPasteboard];
-    if (!(text = [gpBoard stringForType:NSStringPboardType])) {
-        NSLog(@"Paste failed");
-        return;
-    }
-    
-    [[[controller c64] keyboard] typeText:text];
-}
-
 
 // --------------------------------------------------------------------------------
 //                                  Drag and Drop
@@ -349,7 +314,7 @@
         
         NSFileWrapper *fileWrapper = [pb readFileWrapper];
         NSData *fileData = [fileWrapper regularFileContents];
-        V64Snapshot *snapshot = [V64Snapshot snapshotFromBuffer:[fileData bytes] length:[fileData length]];
+        SnapshotProxy *snapshot = [SnapshotProxy snapshotFromBuffer:[fileData bytes] length:[fileData length]];
         [[controller c64] loadFromSnapshot:snapshot];
         return YES;
     }
@@ -367,7 +332,7 @@
             // Do the version numbers match?
             if (Snapshot::isSnapshot([path UTF8String], V_MAJOR, V_MINOR, V_SUBMINOR)) {
                 
-                V64Snapshot *snapshot = [V64Snapshot snapshotFromFile:path];
+                SnapshotProxy *snapshot = [SnapshotProxy snapshotFromFile:path];
                 if (snapshot) {
                     [[controller c64] loadFromSnapshot:snapshot];
                     return YES;
@@ -391,8 +356,26 @@
             [controller mountCartridge];
             return YES;
         }
+
+        // Is it a NIB archive?
+        if ([[controller document] setNIBArchiveWithName:path]) {
+            [controller showMountDialog];
+            return YES;
+        }
+
+        // Is it a G64 archive?
+        if ([[controller document] setG64ArchiveWithName:path]) {
+            [controller showMountDialog];
+            return YES;
+        }
         
-        // Is it an archive?
+        // Is it a TAP archive?
+        if ([[controller document] setTAPArchiveWithName:path]) {
+            [controller showTapeDialog];
+            return YES;
+        }
+        
+        // Is it an archive other than G64?
         if ([[controller document] setArchiveWithName:path]) {
             [controller showMountDialog];
             return YES;

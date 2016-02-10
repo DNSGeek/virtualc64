@@ -34,20 +34,10 @@ NSString *VC64SIDReSIDKey     = @"VC64SIDReSIDKey";
 NSString *VC64SIDChipModelKey = @"VC64SIDChipModelKey";
 NSString *VC64SIDSamplingMethodKey = @"VC64SIDSamplingMethodKey";
 
-- (void)initialize:(MyController *)mycontroller archiveName:(NSString *)name noOfFiles:(unsigned)files
+- (void)initialize:(MyController *)mycontroller
 {
     controller = mycontroller;
     c64 = [controller c64];
-    archiveName = name;
-    noOfFiles = files;
-    
-    // Do some consistency checking...
-    if ([[c64 vc1541] hasDisk] && name == NULL) {
-        NSLog(@"WARNING: VC1541 has disk, but no disk name is provided.");
-        assert(0);
-        archiveName = @"";
-    }
-    
     [self update];
 }
 
@@ -92,7 +82,6 @@ NSString *VC64SIDSamplingMethodKey = @"VC64SIDSamplingMethodKey";
     NSLog(@"setNtscAction");
     
     [c64 setNTSC];
-    // [[controller screen] setNTSC];
     [self update];	
 }
 
@@ -117,32 +106,6 @@ NSString *VC64SIDSamplingMethodKey = @"VC64SIDSamplingMethodKey";
     NSLog(@"bitAccurateAction");
     
     [[c64 vc1541] setBitAccuracy:[(NSButton *)sender state]];
-    [self update];
-}
-
-- (IBAction)writeProtectionAction:(id)sender
-{
-    NSLog(@"writeProtectionAction");
-    
-    [[c64 vc1541] setWriteProtection:[(NSButton *)sender state]];
-    [self update];
-}
-
-- (IBAction)ejectDiskAction:(id)sender
-{
-    NSLog(@"ejectDiskAction");
-
-    [controller ejectAction:sender];
-    [self update];
-}
-
-- (IBAction)ejectCartridgeAction:(id)sender
-{
-    NSLog(@"ejectCartridgeAction");
-
-    [c64 detachCartridge];
-    [[controller document] setCartridge:NULL];
-    [c64 reset];
     [self update];
 }
 
@@ -209,58 +172,7 @@ NSString *VC64SIDSamplingMethodKey = @"VC64SIDSamplingMethodKey";
     [warpLoad setState:[c64 warpLoad]];
     [driveNoise setState:[[c64 vc1541] soundMessagesEnabled]];
     [bitAccurate setState:[[c64 vc1541] bitAccuracy]];
-    
-    if ([[c64 vc1541] hasDisk]) {
         
-        [diskIcon setHidden:NO];
-        [diskText setStringValue:archiveName];
-        [diskText2 setStringValue:[NSString stringWithFormat:@"%d file%s",
-                                   noOfFiles, noOfFiles == 1 ? "" : "s"]];
-        [diskEject setEnabled:YES];
-        [diskEject setHidden:NO];
-        [diskEjectText setEnabled:YES];
-        [diskEjectText setHidden:NO];
-        [writeProtected setHidden:NO];
-        [writeProtected setState:[[c64 vc1541] writeProtection]];
-        
-    } else {
-        
-        [diskIcon setHidden:YES];
-        [diskText setStringValue:@"No disk inserted"];
-        [diskText2 setStringValue:@""];
-        [diskEject setEnabled:NO];
-        [diskEject setHidden:YES];
-        [diskEjectText setEnabled:NO];
-        [diskEjectText setHidden:YES];
-        [writeProtected setHidden:YES];
-    }
-    
-    /* Expansion port */
-    if ([c64 isCartridgeAttached]) {
-        
-        [cartridgeIcon setHidden:NO];
-        [cartridgeText setStringValue:[NSString stringWithFormat:@"Type %d cartridge",
-                                       [[c64 expansionport] cartridgeType]]];
-        [cartridgeText2 setStringValue:[NSString stringWithFormat:@"%d chip%s (%d KB total)",
-                                        [[c64 expansionport] numberOfChips],
-                                        [[c64 expansionport] numberOfChips] == 1 ? "" : "s",
-                                        [[c64 expansionport] numberOfBytes] / 1024]];
-        [cartridgeEject setEnabled:YES];
-        [cartridgeEject setHidden:NO];
-        [cartridgeEjectText setEnabled:YES];
-        [cartridgeEjectText setHidden:NO];
-        
-    } else {
-        
-        [cartridgeIcon setHidden:YES];
-        [cartridgeText setStringValue:@"No cartridge attached"];
-        [cartridgeText2 setStringValue:@""];
-        [cartridgeEject setEnabled:NO];
-        [cartridgeEject setHidden:YES];
-        [cartridgeEjectText setEnabled:NO];
-        [cartridgeEjectText setHidden:YES];
-    }
-    
     /* Audio */
     [SIDUseReSID setState:[c64 reSID]];
     [SIDFilter setState:[c64 audioFilter]];

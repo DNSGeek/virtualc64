@@ -71,12 +71,26 @@
         return;
     
     // Export
-    NSURL *selectedFile = [sPanel URL];
-    NSLog(@"Saving screenshot to file %@", selectedFile);
+    NSURL *url = [sPanel URL];
+    NSLog(@"Saving screenshot to file %@", url);
 		
     NSImage *image = [metalScreen screenshot];
     NSData *data = [image TIFFRepresentation];
-    [data writeToURL:selectedFile atomically:YES];
+    [data writeToURL:url atomically:YES];
+}
+
+- (IBAction)quicksaveScreenshot:(id)sender
+{
+    NSArray *paths = NSSearchPathForDirectoriesInDomains (NSDesktopDirectory, NSUserDomainMask, YES);
+    NSString *desktopPath = [paths objectAtIndex:0];
+    NSString *filePath = [desktopPath stringByAppendingPathComponent:@"Untitled.png"];
+    NSURL *url = [NSURL fileURLWithPath:filePath];
+    
+    NSLog(@"Quicksaving screenshot to file %@", url);
+    
+    NSImage *image = [metalScreen screenshot];
+    NSData *data = [image TIFFRepresentation];
+    [data writeToURL:url atomically:YES];
 }
 
 - (IBAction)exportDiskDialog:(id)sender
@@ -86,13 +100,12 @@
 
 - (bool)exportDiskDialogWorker:(int)type
 {
-    VC1541 *floppy = [c64 c64]->floppy;
-    D64Archive *diskContents;
+    D64ArchiveProxy *newDiskContents;
     NSArray *fileTypes;
-    Archive *target;
-    
+    ArchiveProxy *target;
+
     // Create archive from drive
-    if ((diskContents = D64Archive::archiveFromDrive(floppy)) == NULL) {
+    if ((newDiskContents = [[c64 vc1541] convertToD64]) == nil) {
         NSLog(@"Cannot create D64 archive from drive");
         return false;
     }
@@ -104,31 +117,28 @@
             
             NSLog(@"Exporting to D64 format");
             fileTypes = @[@"D64"];
-            target = diskContents;
+            target = newDiskContents;
             break;
             
         case T64_CONTAINER:
             
             NSLog(@"Exporting to T64 format");
             fileTypes = @[@"T64"];
-            target = T64Archive::archiveFromArchive(diskContents);
-            delete diskContents;
+            target = [T64ArchiveProxy archiveFromArchive:newDiskContents];
             break;
             
         case PRG_CONTAINER:
             
             NSLog(@"Exporting to PRG format");
             fileTypes = @[@"PRG"];
-            target = PRGArchive::archiveFromArchive(diskContents);
-            // delete diskContents;
+            target = [PRGArchiveProxy archiveFromArchive:newDiskContents];
             break;
             
         case P00_CONTAINER:
             
             NSLog(@"Exporting to P00 format");
             fileTypes = @[@"P00"];
-            target = P00Archive::archiveFromArchive(diskContents);
-            delete diskContents;
+            target = [P00ArchiveProxy archiveFromArchive:newDiskContents];
             break;
             
         default:
@@ -142,10 +152,8 @@
     [sPanel setAllowedFileTypes:fileTypes];
     
     // Show panel
-    if ([sPanel runModal] != NSModalResponseOK) {
-        delete target;
+    if ([sPanel runModal] != NSModalResponseOK)
         return false;
-    }
     
     // Export
     NSURL *selectedURL = [sPanel URL];
@@ -153,9 +161,8 @@
     NSString *selectedFile = [selectedFileURL stringByReplacingOccurrencesOfString:@"file://" withString:@""];
     
     NSLog(@"Exporting to file %@", selectedFile);
-    target->writeToFile([selectedFile UTF8String]);
-    delete target;
-    floppy->disk.setModified(false);
+    [target writeToFile:selectedFile];
+    [[[c64 vc1541] disk] setModified:NO];
     return true;
 }
 
@@ -196,17 +203,21 @@
 {
     NSLog(@"showStatusBarAction");
     
-    [drive setHidden:![[c64 vc1541] hasDisk]];
-    [eject setHidden:![[c64 vc1541] hasDisk]];
-    [progress setHidden:NO];
-    [cartridgeIcon setHidden:![[c64 expansionport] cartridgeAttached]];
-    [cartridgeEject setHidden:![[c64 expansionport] cartridgeAttached]];
     [greenLED setHidden:NO];
     [redLED setHidden:NO];
+    [progress setHidden:NO];
+    [tapeProgress setHidden:NO];
+    [driveIcon setHidden:![[c64 vc1541] hasDisk]];
+    [driveEject setHidden:![[c64 vc1541] hasDisk]];
+    [tapeIcon setHidden:![[c64 datasette] hasTape]];
+    [tapeEject setHidden:![[c64 datasette] hasTape]];
+    [cartridgeIcon setHidden:![[c64 expansionport] cartridgeAttached]];
+    [cartridgeEject setHidden:![[c64 expansionport] cartridgeAttached]];
     [info setHidden:NO];
     [clockSpeed setHidden:NO];
     [clockSpeedBar setHidden:NO];
-    [warpMode setHidden:NO];
+    [warpIcon setHidden:NO];
+    // [alwaysWarpIcon setHidden:NO];
     
     [metalScreen setDrawInEntireWindow:NO];
 }
@@ -216,18 +227,22 @@
     NSLog(@"hideStatusBarAction");
     
     // Hide bottom bar
-    [drive setHidden:YES];
-    [eject setHidden:YES];
-    [progress setHidden:YES];
-    [cartridgeIcon setHidden:YES];
-    [cartridgeEject setHidden:YES];
     [greenLED setHidden:YES];
     [redLED setHidden:YES];
+    [progress setHidden:YES];
+    [tapeProgress setHidden:YES];
+    [driveIcon setHidden:YES];
+    [driveEject setHidden:YES];
+    [tapeIcon setHidden:YES];
+    [tapeEject setHidden:YES];
+    [cartridgeIcon setHidden:YES];
+    [cartridgeEject setHidden:YES];
     [info setHidden:YES];
     [clockSpeed setHidden:YES];
     [clockSpeedBar setHidden:YES];
-    [warpMode setHidden:YES];
-        
+    [warpIcon setHidden:YES];
+    // [alwaysWarpIcon setHidden:YES];
+    
     [metalScreen setDrawInEntireWindow:YES];
 }
 
@@ -246,13 +261,33 @@
     [self refresh];
 }
 
+- (IBAction)shiftRunstopAction:(id)sender
+{
+    NSLog(@"Shift rustop combination pressed");
+    [[self document] updateChangeCount:NSChangeDone];
+    [[c64 keyboard] pressShiftRunstopKey];
+    sleepMicrosec(100000);
+    [[c64 keyboard] releaseShiftRunstopKey];
+    [self refresh];
+}
+
+- (IBAction)restoreAction:(id)sender
+{
+    NSLog(@"Restore key pressed");
+    [[self document] updateChangeCount:NSChangeDone];
+    [[c64 keyboard] pressRestoreKey];
+    sleepMicrosec(100000);
+    [[c64 keyboard] releaseRestoreKey];
+    [self refresh];
+}
+
 - (IBAction)runstopRestoreAction:(id)sender
 {
     NSLog(@"Rustop Restore combination pressed");
     [[self document] updateChangeCount:NSChangeDone];
-    
-    [c64 keyboardPressRunstopRestore];
-    
+    [[c64 keyboard] pressRunstopKey];
+    [self restoreAction:sender];
+    [[c64 keyboard] releaseRunstopKey];
     [self refresh];
 }
 
@@ -317,6 +352,26 @@
     [self refresh];
 }
 
+- (IBAction)datasetteEjectAction:(id)sender
+{
+    NSLog(@"datasetteEjectAction");
+    [[self document] updateChangeCount:NSChangeDone];
+    [[c64 datasette] ejectTape];
+}
+
+- (IBAction)datasettePressPlayAction:(id)sender
+{
+    NSLog(@"datasettePressPlayAction");
+    [[self document] updateChangeCount:NSChangeDone];
+    [[c64 datasette] pressPlay];
+}
+
+- (IBAction)datasettePressStopAction:(id)sender
+{
+    NSLog(@"datasettePressStopAction");
+    [[self document] updateChangeCount:NSChangeDone];
+    [[c64 datasette] pressStop];
+}
 
 // --------------------------------------------------------------------------------
 //                                 Debug menu
@@ -428,8 +483,8 @@
 - (IBAction)dumpVC1541VIA2:(id)sender { [[[c64 vc1541] via:2] dump]; }
 - (IBAction)dumpVC1541Memory:(id)sender { [[[c64 vc1541] mem] dump]; }
 - (IBAction)dumpKeyboard:(id)sender { [[c64 keyboard] dump]; }
-- (IBAction)dumpC64Joystick1:(id)sender { [[c64 joystick1] dump]; }
-- (IBAction)dumpC64Joystick2:(id)sender { [[c64 joystick2] dump]; }
+- (IBAction)dumpC64JoystickA:(id)sender { [[c64 joystickA] dump]; }
+- (IBAction)dumpC64JoystickB:(id)sender { [[c64 joystickB] dump]; }
 - (IBAction)dumpIEC:(id)sender { [[c64 iec] dump]; }
 - (IBAction)dumpC64ExpansionPort:(id)sender { [[c64 expansionport] dump]; }
 

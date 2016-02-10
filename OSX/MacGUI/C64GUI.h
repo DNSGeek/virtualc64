@@ -54,8 +54,10 @@
 
 #import "PropertiesDialog.h"
 #import "HardwareDialog.h"
+#import "MediaDialog.h"
 #import "MountDragView.h"
 #import "MountDialog.h"
+#import "TapeDialog.h"
 #import "RomDialog.h"
 
 #import "JoystickManager.h"

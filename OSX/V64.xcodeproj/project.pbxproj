@@ -44,6 +44,7 @@
 		50176C800A6F7357009E80BD /* MyOpenGLView.mm in Sources */ = {isa = PBXBuildFile; fileRef = 50176C780A6F7357009E80BD /* MyOpenGLView.mm */; };
 		50176C810A6F7357009E80BD /* C64Proxy.mm in Sources */ = {isa = PBXBuildFile; fileRef = 50176C7A0A6F7357009E80BD /* C64Proxy.mm */; };
 		5018E48112240F7100F0820E /* Container.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5018E48012240F7100F0820E /* Container.cpp */; };
+		5020C3121C4BA3A700DAE8E5 /* MyWindow.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5020C3111C4BA3A700DAE8E5 /* MyWindow.mm */; };
 		5020F28C0BBABE3C0093C396 /* IEC.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5020F28B0BBABE3C0093C396 /* IEC.cpp */; };
 		50244B7B1BBEBAC9002A55E3 /* Sparkle.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 50244B7A1BBEBAC9002A55E3 /* Sparkle.framework */; };
 		50244B7C1BBEBB69002A55E3 /* Sparkle.framework in CopyFiles */ = {isa = PBXBuildFile; fileRef = 50244B7A1BBEBAC9002A55E3 /* Sparkle.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -68,9 +69,16 @@
 		50414727122188FC00A80E0C /* Cartridge.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 50414725122188FC00A80E0C /* Cartridge.cpp */; };
 		5041486912219F6E00A80E0C /* cartridge.png in Resources */ = {isa = PBXBuildFile; fileRef = 5041486812219F6E00A80E0C /* cartridge.png */; };
 		5042312C1BD371FF00B3DEF9 /* MyMetalViewResponder.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5042312B1BD371FF00B3DEF9 /* MyMetalViewResponder.mm */; };
+		504606341BE4B99100463FD7 /* G64Archive.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 504606321BE4B99100463FD7 /* G64Archive.cpp */; };
 		50471FE60A7B679A00A8DB94 /* stepInto32.png in Resources */ = {isa = PBXBuildFile; fileRef = 50471FE50A7B679A00A8DB94 /* stepInto32.png */; };
 		50471FE80A7B67A100A8DB94 /* stepOver32.png in Resources */ = {isa = PBXBuildFile; fileRef = 50471FE70A7B67A100A8DB94 /* stepOver32.png */; };
 		50471FEC0A7B67AE00A8DB94 /* restart32.png in Resources */ = {isa = PBXBuildFile; fileRef = 50471FEB0A7B67AE00A8DB94 /* restart32.png */; };
+		504A22AB1BF71FD500B29BEB /* clock_blue.png in Resources */ = {isa = PBXBuildFile; fileRef = 504A22A51BF71FD500B29BEB /* clock_blue.png */; };
+		504A22AC1BF71FD500B29BEB /* clock_green.png in Resources */ = {isa = PBXBuildFile; fileRef = 504A22A61BF71FD500B29BEB /* clock_green.png */; };
+		504A22AD1BF71FD500B29BEB /* clock_yellow.png in Resources */ = {isa = PBXBuildFile; fileRef = 504A22A71BF71FD500B29BEB /* clock_yellow.png */; };
+		504A22AE1BF71FD500B29BEB /* clock_red.png in Resources */ = {isa = PBXBuildFile; fileRef = 504A22A81BF71FD500B29BEB /* clock_red.png */; };
+		504A22AF1BF71FD500B29BEB /* pin_red.png in Resources */ = {isa = PBXBuildFile; fileRef = 504A22A91BF71FD500B29BEB /* pin_red.png */; };
+		504A22B01BF71FD500B29BEB /* pin_black.png in Resources */ = {isa = PBXBuildFile; fileRef = 504A22AA1BF71FD500B29BEB /* pin_black.png */; };
 		5051A1521B88438800CBFB5A /* 1541_track_change_0.aiff in Resources */ = {isa = PBXBuildFile; fileRef = 5051A1511B88438800CBFB5A /* 1541_track_change_0.aiff */; };
 		5051A15B1B885E1B00CBFB5A /* 1541_door_closed_2.aiff in Resources */ = {isa = PBXBuildFile; fileRef = 5051A1591B885E1B00CBFB5A /* 1541_door_closed_2.aiff */; };
 		5051A15C1B885E1B00CBFB5A /* 1541_door_open_1.aiff in Resources */ = {isa = PBXBuildFile; fileRef = 5051A15A1B885E1B00CBFB5A /* 1541_door_open_1.aiff */; };
@@ -78,18 +86,20 @@
 		5051A1601B885FDD00CBFB5A /* 1541_track_change_2.aiff in Resources */ = {isa = PBXBuildFile; fileRef = 5051A15E1B885FDD00CBFB5A /* 1541_track_change_2.aiff */; };
 		5051A1621B88661000CBFB5A /* 1541_track_change_1.aiff in Resources */ = {isa = PBXBuildFile; fileRef = 5051A1611B88661000CBFB5A /* 1541_track_change_1.aiff */; };
 		5055A83F1BC7996900399A20 /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5055A83E1BC7996900399A20 /* MetalKit.framework */; };
+		505739E51C01FC5700B80646 /* NIBArchive.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 505739E31C01FC5700B80646 /* NIBArchive.cpp */; };
 		5058B1801A6AD2D900A99F1C /* ExpansionPort.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5058B17E1A6AD2D900A99F1C /* ExpansionPort.cpp */; };
 		505EB0A10F3047C300960BC0 /* Snapshot.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 505EB0A00F3047C300960BC0 /* Snapshot.cpp */; };
 		506004661B78E9C500EBDD93 /* PixelEngine.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 506004641B78E9C500EBDD93 /* PixelEngine.cpp */; };
+		506158731BF0A8A10031FD2F /* MediaDialog.mm in Sources */ = {isa = PBXBuildFile; fileRef = 506158721BF0A8A10031FD2F /* MediaDialog.mm */; };
 		506D39D2141780E500268AF6 /* SIDWrapper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 506D39D1141780E500268AF6 /* SIDWrapper.cpp */; };
 		506D39D6141788E700268AF6 /* ReSID.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 506D39D4141788E600268AF6 /* ReSID.cpp */; };
 		50775E0F1B8EE8A9002EB58D /* Disk525.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 50775E0E1B8EE8A9002EB58D /* Disk525.cpp */; };
 		5077743012DE490300D72088 /* MemTableView.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5077742F12DE490300D72088 /* MemTableView.mm */; };
 		5077743312DE490B00D72088 /* CpuTableView.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5077743212DE490B00D72088 /* CpuTableView.mm */; };
-		5081C4DA1BDB6ED900D49076 /* MyMetalViewController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5081C4D91BDB6ED900D49076 /* MyMetalViewController.mm */; };
 		5087FD591BDA16C400570F0D /* metal.png in Resources */ = {isa = PBXBuildFile; fileRef = 5087FD581BDA16C400570F0D /* metal.png */; };
 		5088A6D612E0676200378033 /* MyControllerDebugPanel.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5088A6D512E0676200378033 /* MyControllerDebugPanel.mm */; };
 		5088A6EA12E06DB700378033 /* MyControllerToolbar.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5088A6E912E06DB700378033 /* MyControllerToolbar.mm */; };
+		5088E6881C3515DB006A80E5 /* VC64Object.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5088E6861C3515DB006A80E5 /* VC64Object.cpp */; };
 		5089F0551BD3F64200306F4D /* BypassFilter.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5089F0541BD3F64200306F4D /* BypassFilter.mm */; };
 		5094197D0E426C13008D6F71 /* rom.png in Resources */ = {isa = PBXBuildFile; fileRef = 5094197C0E426C13008D6F71 /* rom.png */; };
 		509AEA0C0C324AB0001FC9FD /* PRGArchive.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 509AEA0B0C324AB0001FC9FD /* PRGArchive.cpp */; };
@@ -112,6 +122,14 @@
 		50BD119F1BA2E1DB0043E59F /* MyControllerCrashreporter.mm in Sources */ = {isa = PBXBuildFile; fileRef = 50BD119E1BA2E1DB0043E59F /* MyControllerCrashreporter.mm */; };
 		50C72DE41BC7BC8800F1863B /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 50C72DE31BC7BC8800F1863B /* Metal.framework */; };
 		50C72DE61BC7F42100F1863B /* Shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 50C72DE51BC7F42100F1863B /* Shaders.metal */; };
+		50C8924F1BEFB11700231B96 /* cntrlEject.png in Resources */ = {isa = PBXBuildFile; fileRef = 50C8924E1BEFB11700231B96 /* cntrlEject.png */; };
+		50C892511BEFB31200231B96 /* tape.png in Resources */ = {isa = PBXBuildFile; fileRef = 50C892501BEFB31200231B96 /* tape.png */; };
+		50C892531BEFB48600231B96 /* cntrlPause.png in Resources */ = {isa = PBXBuildFile; fileRef = 50C892521BEFB48600231B96 /* cntrlPause.png */; };
+		50C892591BEFB64500231B96 /* cntrlPlay.png in Resources */ = {isa = PBXBuildFile; fileRef = 50C892541BEFB64500231B96 /* cntrlPlay.png */; };
+		50C8925A1BEFB64500231B96 /* cntrlRewind.png in Resources */ = {isa = PBXBuildFile; fileRef = 50C892551BEFB64500231B96 /* cntrlRewind.png */; };
+		50C8925B1BEFB64500231B96 /* cntrlStart.png in Resources */ = {isa = PBXBuildFile; fileRef = 50C892561BEFB64500231B96 /* cntrlStart.png */; };
+		50C8925C1BEFB64500231B96 /* cntrlStop.png in Resources */ = {isa = PBXBuildFile; fileRef = 50C892571BEFB64500231B96 /* cntrlStop.png */; };
+		50C8925D1BEFB64500231B96 /* ctrlEnd.png in Resources */ = {isa = PBXBuildFile; fileRef = 50C892581BEFB64500231B96 /* ctrlEnd.png */; };
 		50C9CB131B81E3130054EE86 /* C64ProxyColors.mm in Sources */ = {isa = PBXBuildFile; fileRef = 50C9CB121B81E3130054EE86 /* C64ProxyColors.mm */; };
 		50C9CB1C1B8213EC0054EE86 /* tb_motherboard.png in Resources */ = {isa = PBXBuildFile; fileRef = 50C9CB1B1B8213EC0054EE86 /* tb_motherboard.png */; };
 		50C9CB201B826C960054EE86 /* joystick.png in Resources */ = {isa = PBXBuildFile; fileRef = 50C9CB1F1B826C960054EE86 /* joystick.png */; };
@@ -172,8 +190,12 @@
 		50F23D0812DF932800B1F275 /* glossy.png in Resources */ = {isa = PBXBuildFile; fileRef = 50F23D0712DF932800B1F275 /* glossy.png */; };
 		50F55DA50F28EADC0040592B /* MyDocument.xib in Resources */ = {isa = PBXBuildFile; fileRef = 50F55DA30F28EADC0040592B /* MyDocument.xib */; };
 		50F55DCD0F28EC010040592B /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 50F55DCB0F28EC010040592B /* MainMenu.xib */; };
+		50F681E41BEA203F008568E3 /* TapeDialog.mm in Sources */ = {isa = PBXBuildFile; fileRef = 50F681E31BEA203F008568E3 /* TapeDialog.mm */; };
+		50F681E71BEA2927008568E3 /* TAPArchive.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 50F681E61BEA2927008568E3 /* TAPArchive.cpp */; };
+		50F681EA1BEA3BE4008568E3 /* Datasette.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 50F681E81BEA3BE4008568E3 /* Datasette.cpp */; };
 		50F93BE712EF309900DD6A8A /* FileArchive.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 50F93BE512EF309900DD6A8A /* FileArchive.cpp */; };
 		50FBE90B12DC992B0093194C /* MyControllerVicPanel.mm in Sources */ = {isa = PBXBuildFile; fileRef = 50FBE90A12DC992B0093194C /* MyControllerVicPanel.mm */; };
+		50FD96A51BF65861009134A4 /* 1541.png in Resources */ = {isa = PBXBuildFile; fileRef = 50FD96A41BF65861009134A4 /* 1541.png */; };
 		8D15AC2C0486D014006FF6A4 /* Credits.rtf in Resources */ = {isa = PBXBuildFile; fileRef = 2A37F4B9FDCFA73011CA2CEA /* Credits.rtf */; };
 		8D15AC2F0486D014006FF6A4 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 089C165FFE840EACC02AAC07 /* InfoPlist.strings */; };
 		8D15AC320486D014006FF6A4 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 2A37F4B0FDCFA73011CA2CEA /* main.m */; settings = {ATTRIBUTES = (); }; };
@@ -270,7 +292,9 @@
 		50176C7A0A6F7357009E80BD /* C64Proxy.mm */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.objcpp; path = C64Proxy.mm; sourceTree = "<group>"; };
 		5018E47F12240F7100F0820E /* Container.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Container.h; sourceTree = "<group>"; };
 		5018E48012240F7100F0820E /* Container.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Container.cpp; sourceTree = "<group>"; };
-		501D2C7D1B85C0F700B1AD0F /* VIC_constants.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VIC_constants.h; sourceTree = "<group>"; };
+		501D2C7D1B85C0F700B1AD0F /* VIC_globals.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VIC_globals.h; sourceTree = "<group>"; };
+		5020C3101C4BA3A700DAE8E5 /* MyWindow.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MyWindow.h; sourceTree = "<group>"; };
+		5020C3111C4BA3A700DAE8E5 /* MyWindow.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MyWindow.mm; sourceTree = "<group>"; };
 		5020F28A0BBABE3C0093C396 /* IEC.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IEC.h; sourceTree = "<group>"; };
 		5020F28B0BBABE3C0093C396 /* IEC.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = IEC.cpp; sourceTree = "<group>"; };
 		50244B7A1BBEBAC9002A55E3 /* Sparkle.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = Sparkle.framework; sourceTree = "<group>"; };
@@ -302,9 +326,17 @@
 		5041486812219F6E00A80E0C /* cartridge.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = cartridge.png; sourceTree = "<group>"; };
 		5042312A1BD3718F00B3DEF9 /* MyMetalViewResponder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MyMetalViewResponder.h; sourceTree = "<group>"; };
 		5042312B1BD371FF00B3DEF9 /* MyMetalViewResponder.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MyMetalViewResponder.mm; sourceTree = "<group>"; };
+		504606321BE4B99100463FD7 /* G64Archive.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = G64Archive.cpp; sourceTree = "<group>"; };
+		504606331BE4B99100463FD7 /* G64Archive.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = G64Archive.h; sourceTree = "<group>"; };
 		50471FE50A7B679A00A8DB94 /* stepInto32.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = stepInto32.png; sourceTree = "<group>"; };
 		50471FE70A7B67A100A8DB94 /* stepOver32.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = stepOver32.png; sourceTree = "<group>"; };
 		50471FEB0A7B67AE00A8DB94 /* restart32.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = restart32.png; sourceTree = "<group>"; };
+		504A22A51BF71FD500B29BEB /* clock_blue.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = clock_blue.png; sourceTree = "<group>"; };
+		504A22A61BF71FD500B29BEB /* clock_green.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = clock_green.png; sourceTree = "<group>"; };
+		504A22A71BF71FD500B29BEB /* clock_yellow.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = clock_yellow.png; sourceTree = "<group>"; };
+		504A22A81BF71FD500B29BEB /* clock_red.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = clock_red.png; sourceTree = "<group>"; };
+		504A22A91BF71FD500B29BEB /* pin_red.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = pin_red.png; sourceTree = "<group>"; };
+		504A22AA1BF71FD500B29BEB /* pin_black.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = pin_black.png; sourceTree = "<group>"; };
 		5051A1511B88438800CBFB5A /* 1541_track_change_0.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = 1541_track_change_0.aiff; sourceTree = "<group>"; };
 		5051A1551B884EBE00CBFB5A /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
 		5051A1591B885E1B00CBFB5A /* 1541_door_closed_2.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = 1541_door_closed_2.aiff; sourceTree = "<group>"; };
@@ -313,12 +345,16 @@
 		5051A15E1B885FDD00CBFB5A /* 1541_track_change_2.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = 1541_track_change_2.aiff; sourceTree = "<group>"; };
 		5051A1611B88661000CBFB5A /* 1541_track_change_1.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = 1541_track_change_1.aiff; sourceTree = "<group>"; };
 		5055A83E1BC7996900399A20 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
+		505739E31C01FC5700B80646 /* NIBArchive.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = NIBArchive.cpp; sourceTree = "<group>"; };
+		505739E41C01FC5700B80646 /* NIBArchive.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NIBArchive.h; sourceTree = "<group>"; };
 		5058B17E1A6AD2D900A99F1C /* ExpansionPort.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ExpansionPort.cpp; sourceTree = "<group>"; };
 		5058B17F1A6AD2D900A99F1C /* ExpansionPort.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ExpansionPort.h; sourceTree = "<group>"; };
 		505EB09F0F3047C300960BC0 /* Snapshot.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Snapshot.h; sourceTree = "<group>"; };
 		505EB0A00F3047C300960BC0 /* Snapshot.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Snapshot.cpp; sourceTree = "<group>"; };
 		506004641B78E9C500EBDD93 /* PixelEngine.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PixelEngine.cpp; sourceTree = "<group>"; };
 		506004651B78E9C500EBDD93 /* PixelEngine.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PixelEngine.h; sourceTree = "<group>"; };
+		506158721BF0A8A10031FD2F /* MediaDialog.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MediaDialog.mm; sourceTree = "<group>"; };
+		506158741BF0A8AE0031FD2F /* MediaDialog.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MediaDialog.h; sourceTree = "<group>"; };
 		506D39D1141780E500268AF6 /* SIDWrapper.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SIDWrapper.cpp; sourceTree = "<group>"; };
 		506D39D3141780FF00268AF6 /* SIDWrapper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SIDWrapper.h; sourceTree = "<group>"; };
 		506D39D4141788E600268AF6 /* ReSID.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ReSID.cpp; sourceTree = "<group>"; };
@@ -329,13 +365,13 @@
 		5077742F12DE490300D72088 /* MemTableView.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MemTableView.mm; sourceTree = "<group>"; };
 		5077743112DE490B00D72088 /* CpuTableView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CpuTableView.h; sourceTree = "<group>"; };
 		5077743212DE490B00D72088 /* CpuTableView.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = CpuTableView.mm; sourceTree = "<group>"; };
-		5081C4D81BDB6EC200D49076 /* MyMetalViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MyMetalViewController.h; sourceTree = "<group>"; };
-		5081C4D91BDB6ED900D49076 /* MyMetalViewController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MyMetalViewController.mm; sourceTree = "<group>"; };
 		5087FD581BDA16C400570F0D /* metal.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = metal.png; sourceTree = "<group>"; };
 		5088A6D412E0676200378033 /* MyControllerDebugPanel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MyControllerDebugPanel.h; sourceTree = "<group>"; };
 		5088A6D512E0676200378033 /* MyControllerDebugPanel.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MyControllerDebugPanel.mm; sourceTree = "<group>"; };
 		5088A6E812E06DB700378033 /* MyControllerToolbar.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MyControllerToolbar.h; sourceTree = "<group>"; };
 		5088A6E912E06DB700378033 /* MyControllerToolbar.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MyControllerToolbar.mm; sourceTree = "<group>"; };
+		5088E6861C3515DB006A80E5 /* VC64Object.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = VC64Object.cpp; sourceTree = "<group>"; };
+		5088E6871C3515DB006A80E5 /* VC64Object.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = VC64Object.h; sourceTree = "<group>"; };
 		5089F0531BD3F62800306F4D /* BypassFilter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BypassFilter.h; sourceTree = "<group>"; };
 		5089F0541BD3F64200306F4D /* BypassFilter.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = BypassFilter.mm; sourceTree = "<group>"; };
 		5094197C0E426C13008D6F71 /* rom.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = rom.png; sourceTree = "<group>"; };
@@ -368,6 +404,14 @@
 		50BD119E1BA2E1DB0043E59F /* MyControllerCrashreporter.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MyControllerCrashreporter.mm; sourceTree = "<group>"; };
 		50C72DE31BC7BC8800F1863B /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		50C72DE51BC7F42100F1863B /* Shaders.metal */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.metal; path = Shaders.metal; sourceTree = "<group>"; };
+		50C8924E1BEFB11700231B96 /* cntrlEject.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = cntrlEject.png; sourceTree = "<group>"; };
+		50C892501BEFB31200231B96 /* tape.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = tape.png; sourceTree = "<group>"; };
+		50C892521BEFB48600231B96 /* cntrlPause.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = cntrlPause.png; sourceTree = "<group>"; };
+		50C892541BEFB64500231B96 /* cntrlPlay.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = cntrlPlay.png; sourceTree = "<group>"; };
+		50C892551BEFB64500231B96 /* cntrlRewind.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = cntrlRewind.png; sourceTree = "<group>"; };
+		50C892561BEFB64500231B96 /* cntrlStart.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = cntrlStart.png; sourceTree = "<group>"; };
+		50C892571BEFB64500231B96 /* cntrlStop.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = cntrlStop.png; sourceTree = "<group>"; };
+		50C892581BEFB64500231B96 /* ctrlEnd.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = ctrlEnd.png; sourceTree = "<group>"; };
 		50C9CB121B81E3130054EE86 /* C64ProxyColors.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = C64ProxyColors.mm; sourceTree = "<group>"; };
 		50C9CB141B81E3300054EE86 /* C64ProxyColors.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = C64ProxyColors.h; sourceTree = "<group>"; };
 		50C9CB1B1B8213EC0054EE86 /* tb_motherboard.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = tb_motherboard.png; sourceTree = "<group>"; };
@@ -450,10 +494,17 @@
 		50F23D0712DF932800B1F275 /* glossy.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = glossy.png; sourceTree = "<group>"; };
 		50F55DA40F28EADC0040592B /* English */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = English; path = English.lproj/MyDocument.xib; sourceTree = "<group>"; };
 		50F55DCC0F28EC010040592B /* English */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = English; path = English.lproj/MainMenu.xib; sourceTree = "<group>"; };
+		50F681E21BEA2015008568E3 /* TapeDialog.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TapeDialog.h; sourceTree = "<group>"; };
+		50F681E31BEA203F008568E3 /* TapeDialog.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = TapeDialog.mm; sourceTree = "<group>"; };
+		50F681E51BEA2917008568E3 /* TAPArchive.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TAPArchive.h; sourceTree = "<group>"; };
+		50F681E61BEA2927008568E3 /* TAPArchive.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TAPArchive.cpp; sourceTree = "<group>"; };
+		50F681E81BEA3BE4008568E3 /* Datasette.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Datasette.cpp; sourceTree = "<group>"; };
+		50F681E91BEA3BE4008568E3 /* Datasette.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Datasette.h; sourceTree = "<group>"; };
 		50F93BE512EF309900DD6A8A /* FileArchive.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FileArchive.cpp; sourceTree = "<group>"; };
 		50F93BE612EF309900DD6A8A /* FileArchive.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FileArchive.h; sourceTree = "<group>"; };
 		50FBE90912DC992B0093194C /* MyControllerVicPanel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MyControllerVicPanel.h; sourceTree = "<group>"; };
 		50FBE90A12DC992B0093194C /* MyControllerVicPanel.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MyControllerVicPanel.mm; sourceTree = "<group>"; };
+		50FD96A41BF65861009134A4 /* 1541.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = 1541.png; sourceTree = "<group>"; };
 		8D15AC360486D014006FF6A4 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		8D15AC370486D014006FF6A4 /* VirtualC64.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VirtualC64.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BC8146860FE54238007ED085 /* JoystickManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JoystickManager.h; sourceTree = "<group>"; };
@@ -582,8 +633,8 @@
 				50176C530A6F72F3009E80BD /* CIA.cpp */,
 				500B6CA30B905CEC002C36EC /* TOD.h */,
 				500B6CA40B905CEC002C36EC /* TOD.cpp */,
+				501D2C7D1B85C0F700B1AD0F /* VIC_globals.h */,
 				50176C600A6F72F3009E80BD /* VIC.h */,
-				501D2C7D1B85C0F700B1AD0F /* VIC_constants.h */,
 				50176C5F0A6F72F3009E80BD /* VIC.cpp */,
 				506004651B78E9C500EBDD93 /* PixelEngine.h */,
 				506004641B78E9C500EBDD93 /* PixelEngine.cpp */,
@@ -605,8 +656,6 @@
 				389E777E0C7A3B6F00BEAFA6 /* Joystick.cpp */,
 				5020F28A0BBABE3C0093C396 /* IEC.h */,
 				5020F28B0BBABE3C0093C396 /* IEC.cpp */,
-				5058B17F1A6AD2D900A99F1C /* ExpansionPort.h */,
-				5058B17E1A6AD2D900A99F1C /* ExpansionPort.cpp */,
 			);
 			name = Computer;
 			sourceTree = "<group>";
@@ -618,6 +667,8 @@
 				50176C4F0A6F72F3009E80BD /* basic.cpp */,
 				500EC04F10E4DCC4005A19A3 /* Message.h */,
 				500EC05010E4DCC4005A19A3 /* Message.cpp */,
+				5088E6871C3515DB006A80E5 /* VC64Object.h */,
+				5088E6861C3515DB006A80E5 /* VC64Object.cpp */,
 				50DAD6900A736F9B00BB44AC /* VirtualComponent.h */,
 				50DAD6910A736F9B00BB44AC /* VirtualComponent.cpp */,
 			);
@@ -640,22 +691,11 @@
 		5000474012DCECAB0098D890 /* View */ = {
 			isa = PBXGroup;
 			children = (
+				50C8924D1BEF35FB00231B96 /* MetalView */,
 				50176C700A6F7357009E80BD /* Disassembler.h */,
 				50176C710A6F7357009E80BD /* Disassembler.mm */,
 				50176C720A6F7357009E80BD /* Formatter.h */,
 				50176C730A6F7357009E80BD /* Formatter.mm */,
-				50032EB01BC919D90050BEEA /* MyMetalView.h */,
-				50032EB11BC919D90050BEEA /* MyMetalView.mm */,
-				5081C4D81BDB6EC200D49076 /* MyMetalViewController.h */,
-				5081C4D91BDB6ED900D49076 /* MyMetalViewController.mm */,
-				500FF38E1BD7CA180038245B /* MyMetalViewSetup.h */,
-				500FF38C1BD7C9AD0038245B /* MyMetalViewSetup.mm */,
-				5042312A1BD3718F00B3DEF9 /* MyMetalViewResponder.h */,
-				5042312B1BD371FF00B3DEF9 /* MyMetalViewResponder.mm */,
-				50137E9E1BCA394600147283 /* MyMetalViewHelper.h */,
-				50137E9F1BCA396100147283 /* MyMetalViewHelper.mm */,
-				50176C770A6F7357009E80BD /* MyOpenGLView.h */,
-				50176C780A6F7357009E80BD /* MyOpenGLView.mm */,
 				5077743112DE490B00D72088 /* CpuTableView.h */,
 				5077743212DE490B00D72088 /* CpuTableView.mm */,
 				5077742E12DE490300D72088 /* MemTableView.h */,
@@ -666,6 +706,8 @@
 				50F239BA12DF66CB00B1F275 /* CheatboxImageBrowserCell.mm */,
 				50F2380112DF4EC600B1F275 /* CheatboxImageBrowserView.h */,
 				50F2380212DF4EC600B1F275 /* CheatboxImageBrowserView.mm */,
+				5020C3101C4BA3A700DAE8E5 /* MyWindow.h */,
+				5020C3111C4BA3A700DAE8E5 /* MyWindow.mm */,
 			);
 			name = View;
 			sourceTree = "<group>";
@@ -702,8 +744,12 @@
 				50E6014713A3653900EDBEA9 /* PropertiesDialog.mm */,
 				50C9CB331B8272F40054EE86 /* HardwareDialog.h */,
 				50C9CB311B8272DA0054EE86 /* HardwareDialog.mm */,
+				506158741BF0A8AE0031FD2F /* MediaDialog.h */,
+				506158721BF0A8A10031FD2F /* MediaDialog.mm */,
 				50D5FDB20C2E9CF50022CA3A /* MountDialog.h */,
 				50D5FDB30C2E9CF50022CA3A /* MountDialog.mm */,
+				50F681E21BEA2015008568E3 /* TapeDialog.h */,
+				50F681E31BEA203F008568E3 /* TapeDialog.mm */,
 				50AE4A331A693AA0003EA774 /* MountDragView.h */,
 				50AE4A341A693AA0003EA774 /* MountDragView.mm */,
 				50A8F8F10E47171300ACE17D /* RomDialog.h */,
@@ -745,7 +791,7 @@
 			children = (
 				5000473E12DCEC7D0098D890 /* General */,
 				5000473C12DCEC060098D890 /* Computer */,
-				504B39910C45192700286F18 /* Drive */,
+				504B39910C45192700286F18 /* Peripherals */,
 				5000C8070D13CE490011A2E9 /* Memory */,
 				509AE9FE0C3249D4001FC9FD /* Loading and saving */,
 			);
@@ -760,24 +806,29 @@
 				5000473F12DCEC9B0098D890 /* Model */,
 				5000474012DCECAB0098D890 /* View */,
 				5000474112DCECBA0098D890 /* Controller */,
-				50C72DE71BC7F50D00F1863B /* Shaders */,
 				5000474212DCECDB0098D890 /* Dialogs */,
 				5000474312DCED190098D890 /* Misc */,
 			);
 			path = MacGUI;
 			sourceTree = "<group>";
 		};
-		504B39910C45192700286F18 /* Drive */ = {
+		504B39910C45192700286F18 /* Peripherals */ = {
 			isa = PBXGroup;
 			children = (
+				5058B17F1A6AD2D900A99F1C /* ExpansionPort.h */,
+				5058B17E1A6AD2D900A99F1C /* ExpansionPort.cpp */,
+				50414726122188FC00A80E0C /* Cartridge.h */,
+				50414725122188FC00A80E0C /* Cartridge.cpp */,
 				5000C8220D13CEE10011A2E9 /* VC1541.h */,
 				5000C8230D13CEE10011A2E9 /* VC1541.cpp */,
 				500FC6770D17D2190044131D /* VIA6522.h */,
 				500FC6780D17D2190044131D /* VIA6522.cpp */,
 				50775E101B8EE95B002EB58D /* Disk525.h */,
 				50775E0E1B8EE8A9002EB58D /* Disk525.cpp */,
+				50F681E91BEA3BE4008568E3 /* Datasette.h */,
+				50F681E81BEA3BE4008568E3 /* Datasette.cpp */,
 			);
-			name = Drive;
+			name = Peripherals;
 			sourceTree = "<group>";
 		};
 		5051A1501B8842F100CBFB5A /* Sounds */ = {
@@ -801,6 +852,20 @@
 			children = (
 				50CCB1B81B84999E008D8C30 /* Toolbar icons */,
 				50D6955012E375A800D9C738 /* Icons */,
+				50FD96A41BF65861009134A4 /* 1541.png */,
+				504A22A51BF71FD500B29BEB /* clock_blue.png */,
+				504A22A61BF71FD500B29BEB /* clock_green.png */,
+				504A22A71BF71FD500B29BEB /* clock_yellow.png */,
+				504A22A81BF71FD500B29BEB /* clock_red.png */,
+				504A22A91BF71FD500B29BEB /* pin_red.png */,
+				504A22AA1BF71FD500B29BEB /* pin_black.png */,
+				50C8924E1BEFB11700231B96 /* cntrlEject.png */,
+				50C892521BEFB48600231B96 /* cntrlPause.png */,
+				50C892541BEFB64500231B96 /* cntrlPlay.png */,
+				50C892551BEFB64500231B96 /* cntrlRewind.png */,
+				50C892561BEFB64500231B96 /* cntrlStart.png */,
+				50C892571BEFB64500231B96 /* cntrlStop.png */,
+				50C892581BEFB64500231B96 /* ctrlEnd.png */,
 				50C9CB361B83561E0054EE86 /* pref_vic.png */,
 				50C9CB381B8356280054EE86 /* pref_sid.png */,
 				50C9CB2B1B826FF20054EE86 /* graphics.png */,
@@ -810,6 +875,7 @@
 				50F23D0712DF932800B1F275 /* glossy.png */,
 				5039A31315BE89940038ACBC /* drive48.png */,
 				5039A31F15BE97500038ACBC /* diskette.png */,
+				50C892501BEFB31200231B96 /* tape.png */,
 				502F57F11B93441400D1077E /* LEDgreen.png */,
 				502F57F31B93441A00D1077E /* LEDred.png */,
 				502F57F51B93442100D1077E /* LEDgray.png */,
@@ -855,8 +921,6 @@
 				5018E48012240F7100F0820E /* Container.cpp */,
 				50D5004B0C2ED1200022CA3A /* Archive.h */,
 				50AFEDBB0C3A7A78007749E7 /* Archive.cpp */,
-				50414726122188FC00A80E0C /* Cartridge.h */,
-				50414725122188FC00A80E0C /* Cartridge.cpp */,
 				505EB09F0F3047C300960BC0 /* Snapshot.h */,
 				505EB0A00F3047C300960BC0 /* Snapshot.cpp */,
 				50D500500C2ED13F0022CA3A /* T64Archive.h */,
@@ -867,6 +931,12 @@
 				509AEA0B0C324AB0001FC9FD /* PRGArchive.cpp */,
 				509AEAFD0C325EFB001FC9FD /* P00Archive.h */,
 				509AEAFE0C325EFB001FC9FD /* P00Archive.cpp */,
+				504606331BE4B99100463FD7 /* G64Archive.h */,
+				504606321BE4B99100463FD7 /* G64Archive.cpp */,
+				505739E41C01FC5700B80646 /* NIBArchive.h */,
+				505739E31C01FC5700B80646 /* NIBArchive.cpp */,
+				50F681E51BEA2917008568E3 /* TAPArchive.h */,
+				50F681E61BEA2927008568E3 /* TAPArchive.cpp */,
 				50F93BE612EF309900DD6A8A /* FileArchive.h */,
 				50F93BE512EF309900DD6A8A /* FileArchive.cpp */,
 			);
@@ -891,6 +961,24 @@
 				50C72DE51BC7F42100F1863B /* Shaders.metal */,
 			);
 			name = Shaders;
+			sourceTree = "<group>";
+		};
+		50C8924D1BEF35FB00231B96 /* MetalView */ = {
+			isa = PBXGroup;
+			children = (
+				50032EB01BC919D90050BEEA /* MyMetalView.h */,
+				50032EB11BC919D90050BEEA /* MyMetalView.mm */,
+				500FF38E1BD7CA180038245B /* MyMetalViewSetup.h */,
+				500FF38C1BD7C9AD0038245B /* MyMetalViewSetup.mm */,
+				5042312A1BD3718F00B3DEF9 /* MyMetalViewResponder.h */,
+				5042312B1BD371FF00B3DEF9 /* MyMetalViewResponder.mm */,
+				50137E9E1BCA394600147283 /* MyMetalViewHelper.h */,
+				50137E9F1BCA396100147283 /* MyMetalViewHelper.mm */,
+				50176C770A6F7357009E80BD /* MyOpenGLView.h */,
+				50176C780A6F7357009E80BD /* MyOpenGLView.mm */,
+				50C72DE71BC7F50D00F1863B /* Shaders */,
+			);
+			name = MetalView;
 			sourceTree = "<group>";
 		};
 		50CCB1B81B84999E008D8C30 /* Toolbar icons */ = {
@@ -982,7 +1070,7 @@
 		2A37F4A9FDCFA73011CA2CEA /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0710;
+				LastUpgradeCheck = 0720;
 			};
 			buildConfigurationList = 504F836D0A89E0D2009FA225 /* Build configuration list for PBXProject "V64" */;
 			compatibilityVersion = "Xcode 3.2";
@@ -1007,7 +1095,9 @@
 			files = (
 				50CCB1BA1B8499C6008D8C30 /* tb_motherboard2.png in Resources */,
 				8D15AC2C0486D014006FF6A4 /* Credits.rtf in Resources */,
+				50C8925B1BEFB64500231B96 /* cntrlStart.png in Resources */,
 				8D15AC2F0486D014006FF6A4 /* InfoPlist.strings in Resources */,
+				50C8924F1BEFB11700231B96 /* cntrlEject.png in Resources */,
 				50C9CB201B826C960054EE86 /* joystick.png in Resources */,
 				50DA14A30A6418470022B4A7 /* bottom.png in Resources */,
 				502F57FC1B93457700D1077E /* slow.png in Resources */,
@@ -1021,18 +1111,26 @@
 				502F57FA1B93457200D1077E /* fast.png in Resources */,
 				50C9CB371B83561E0054EE86 /* pref_vic.png in Resources */,
 				509DF2480A9F681900AE0859 /* keyboard32.png in Resources */,
+				50C8925A1BEFB64500231B96 /* cntrlRewind.png in Resources */,
+				50C892591BEFB64500231B96 /* cntrlPlay.png in Resources */,
+				504A22B01BF71FD500B29BEB /* pin_black.png in Resources */,
+				504A22AB1BF71FD500B29BEB /* clock_blue.png in Resources */,
 				500FF3911BD7F4DF0038245B /* romchip.png in Resources */,
 				50E4BFA70C3CE95400CB6B43 /* floppy.png in Resources */,
+				504A22AF1BF71FD500B29BEB /* pin_red.png in Resources */,
+				50FD96A51BF65861009134A4 /* 1541.png in Resources */,
 				50E4BFAA0C3CEAB700CB6B43 /* warpOff.png in Resources */,
 				500FF3921BD7F4DF0038245B /* romchipMissing.png in Resources */,
 				50E4BFAC0C3CEAD100CB6B43 /* warpOn.png in Resources */,
 				5051A15B1B885E1B00CBFB5A /* 1541_door_closed_2.aiff in Resources */,
+				504A22AC1BF71FD500B29BEB /* clock_green.png in Resources */,
 				50271DEC1A7E458F00C04290 /* LEDnewGreen.png in Resources */,
 				50C9CB2D1B826FF20054EE86 /* graphics.png in Resources */,
 				50C9CB1C1B8213EC0054EE86 /* tb_motherboard.png in Resources */,
 				50A519411B8DA230006771E2 /* drive_click.aiff in Resources */,
 				5051A1521B88438800CBFB5A /* 1541_track_change_0.aiff in Resources */,
 				50E555FD0C42698E00AFB05F /* flag_usa.png in Resources */,
+				50C892511BEFB31200231B96 /* tape.png in Resources */,
 				50C9CB391B8356280054EE86 /* pref_sid.png in Resources */,
 				5051A15F1B885FDD00CBFB5A /* 1541_power_on_0.aiff in Resources */,
 				50CCB1D21B84AC10008D8C30 /* none.png in Resources */,
@@ -1041,10 +1139,14 @@
 				5051A1601B885FDD00CBFB5A /* 1541_track_change_2.aiff in Resources */,
 				38AF838C0C7BA24A00F6DBCE /* joystick1_32.png in Resources */,
 				38AF838D0C7BA24A00F6DBCE /* joystick2_32.png in Resources */,
+				504A22AD1BF71FD500B29BEB /* clock_yellow.png in Resources */,
+				504A22AE1BF71FD500B29BEB /* clock_red.png in Resources */,
 				50CCB1D41B84ACA8008D8C30 /* keyboard.png in Resources */,
 				38AF838E0C7BA24A00F6DBCE /* none32.png in Resources */,
 				50CCB1BC1B8499DE008D8C30 /* tb_setup.png in Resources */,
+				50C892531BEFB48600231B96 /* cntrlPause.png in Resources */,
 				5094197D0E426C13008D6F71 /* rom.png in Resources */,
+				50C8925C1BEFB64500231B96 /* cntrlStop.png in Resources */,
 				50A8F9EA0E472BA800ACE17D /* romMissing.png in Resources */,
 				50A3E08A0E66F7BC00D3564D /* play32.png in Resources */,
 				50A3E08C0E66F7C400D3564D /* pause32.png in Resources */,
@@ -1068,6 +1170,7 @@
 				50D6954B12E3759500D9C738 /* IconT64.icns in Resources */,
 				50D6954C12E3759500D9C738 /* IconV64.icns in Resources */,
 				50D6956C12E380E500D9C738 /* IconPRG.icns in Resources */,
+				50C8925D1BEFB64500231B96 /* ctrlEnd.png in Resources */,
 				5087FD591BDA16C400570F0D /* metal.png in Resources */,
 				50E033BB12E3868100ABF9E3 /* IconP00.icns in Resources */,
 				50CE89DA13A268E000A2FDCE /* VirtualC64Icon.icns in Resources */,
@@ -1108,6 +1211,7 @@
 				50176C810A6F7357009E80BD /* C64Proxy.mm in Sources */,
 				50DAD6920A736F9B00BB44AC /* VirtualComponent.cpp in Sources */,
 				502D44D91BD3BE7C00950088 /* SepiaFilter.mm in Sources */,
+				5088E6881C3515DB006A80E5 /* VC64Object.cpp in Sources */,
 				50CA0D520A9076FD00A5A08D /* OldSID.cpp in Sources */,
 				020214270AF8E599008AB4EB /* SIDVoice.cpp in Sources */,
 				500B6CA50B905CEC002C36EC /* TOD.cpp in Sources */,
@@ -1125,12 +1229,16 @@
 				5000C9630D13DED40011A2E9 /* VC1541Memory.cpp in Sources */,
 				500FC6790D17D2190044131D /* VIA6522.cpp in Sources */,
 				023024000DC902A700F8818A /* AudioDevice.mm in Sources */,
+				50F681E71BEA2927008568E3 /* TAPArchive.cpp in Sources */,
 				50A8F8F30E47171300ACE17D /* RomDialog.mm in Sources */,
+				5020C3121C4BA3A700DAE8E5 /* MyWindow.mm in Sources */,
 				50B37D791A56CA4F0055A540 /* ROMDropTargetView.mm in Sources */,
 				505EB0A10F3047C300960BC0 /* Snapshot.cpp in Sources */,
+				505739E51C01FC5700B80646 /* NIBArchive.cpp in Sources */,
 				BC8146880FE54238007ED085 /* JoystickManager.mm in Sources */,
 				500EC05110E4DCC4005A19A3 /* Message.cpp in Sources */,
 				50414727122188FC00A80E0C /* Cartridge.cpp in Sources */,
+				504606341BE4B99100463FD7 /* G64Archive.cpp in Sources */,
 				5018E48112240F7100F0820E /* Container.cpp in Sources */,
 				50FBE90B12DC992B0093194C /* MyControllerVicPanel.mm in Sources */,
 				502D44DF1BD3CF7600950088 /* CrtFilter.mm in Sources */,
@@ -1148,8 +1256,10 @@
 				50F239BB12DF66CB00B1F275 /* CheatboxImageBrowserCell.mm in Sources */,
 				5088A6D612E0676200378033 /* MyControllerDebugPanel.mm in Sources */,
 				5088A6EA12E06DB700378033 /* MyControllerToolbar.mm in Sources */,
+				50F681E41BEA203F008568E3 /* TapeDialog.mm in Sources */,
 				50F93BE712EF309900DD6A8A /* FileArchive.cpp in Sources */,
 				500FF38D1BD7C9AD0038245B /* MyMetalViewSetup.mm in Sources */,
+				50F681EA1BEA3BE4008568E3 /* Datasette.cpp in Sources */,
 				50E6014813A3653900EDBEA9 /* PropertiesDialog.mm in Sources */,
 				5058B1801A6AD2D900A99F1C /* ExpansionPort.cpp in Sources */,
 				506D39D2141780E500268AF6 /* SIDWrapper.cpp in Sources */,
@@ -1166,9 +1276,9 @@
 				50D141841417A34B0024FC74 /* voice.cc in Sources */,
 				50D141851417A34B0024FC74 /* wave.cc in Sources */,
 				50D141861417A34B0024FC74 /* wave6581__ST.cc in Sources */,
-				5081C4DA1BDB6ED900D49076 /* MyMetalViewController.mm in Sources */,
 				50D141871417A34B0024FC74 /* wave6581_P_T.cc in Sources */,
 				50D141881417A34B0024FC74 /* wave6581_PS_.cc in Sources */,
+				506158731BF0A8A10031FD2F /* MediaDialog.mm in Sources */,
 				50D141891417A34B0024FC74 /* wave6581_PST.cc in Sources */,
 				50D1418A1417A34B0024FC74 /* wave8580__ST.cc in Sources */,
 				50D1418B1417A34B0024FC74 /* wave8580_P_T.cc in Sources */,

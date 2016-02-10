@@ -57,8 +57,8 @@
     {
         NSMenuItem *item1 = [[joystickPortA menu] itemWithTag:IPD_JOYSTICK_1];
         NSMenuItem *item2 = [[joystickPortA menu] itemWithTag:IPD_JOYSTICK_2];
-        [item1 setEnabled:joystickManager->joystickIsPluggedIn(1)];
-        [item2 setEnabled:joystickManager->joystickIsPluggedIn(2)];
+        [item1 setEnabled:[c64 joystickIsPluggedIn:1]];
+        [item2 setEnabled:[c64 joystickIsPluggedIn:2]];
         [joystickPortA selectItemAtIndex:[self inputDeviceA]];
     }
     
@@ -66,8 +66,8 @@
     {
         NSMenuItem *item1 = [[joystickPortB menu] itemWithTag:IPD_JOYSTICK_1];
         NSMenuItem *item2 = [[joystickPortB menu] itemWithTag:IPD_JOYSTICK_2];
-        [item1 setEnabled:joystickManager->joystickIsPluggedIn(1)];
-        [item2 setEnabled:joystickManager->joystickIsPluggedIn(2)];
+        [item1 setEnabled:[c64 joystickIsPluggedIn:1]];
+        [item2 setEnabled:[c64 joystickIsPluggedIn:2]];
         [joystickPortB selectItemAtIndex:[self inputDeviceB]];
     }
 }
@@ -114,10 +114,8 @@
 - (IBAction)portAAction:(id)sender
 {
     {
-        int newvalue = (int)[[sender selectedItem] tag]; /* New pop-up menu selection */
-        int oldvalue = [self inputDeviceA]; /* Old pop-up menu selection */
-        int othervalue = [self inputDeviceB]; /* Pop-up selection of other port */
-        Joystick* target =[c64 c64]->joystick1; /* Target is joystick on port A */
+        int newvalue = (int)[[sender selectedItem] tag]; // New pop-up menu selection
+        int othervalue = [self inputDeviceB];            // Pop-up selection of other port
         
         NSLog(@"portAAction (%d)", newvalue);
         
@@ -125,10 +123,7 @@
         [self setInputDeviceA:newvalue];
         
         // Unconnect old binding of selected port
-        if (oldvalue == IPD_JOYSTICK_1)
-            joystickManager->bindJoystick(1,NULL);
-        if (oldvalue == IPD_JOYSTICK_2)
-            joystickManager->bindJoystick(2,NULL);
+        [c64 unbindJoysticksFromPortA];
         
         // Unconnect binding of other port as well if a double mapping occurs
         if (newvalue == othervalue) {
@@ -145,11 +140,11 @@
                 break;
                 
             case IPD_JOYSTICK_1:
-                joystickManager->bindJoystick(1,target);
+                [c64 bindJoystickToPortA:1];
                 break;
                 
             case IPD_JOYSTICK_2:
-                joystickManager->bindJoystick(2,target);
+                [c64 bindJoystickToPortA:2];
                 break;
                 
             default:
@@ -162,10 +157,8 @@
 
 - (IBAction)portBAction:(id)sender
 {
-    int newvalue = (int)[[sender selectedItem] tag]; /* New pop-up menu selection */
-    int oldvalue = [self inputDeviceB]; /* Old pop-up menu selection */
-    int othervalue = [self inputDeviceA]; /* Pop-up selection of other port */
-    Joystick* target =[c64 c64]->joystick2; /* Target is joystick on port B */
+    int newvalue = (int)[[sender selectedItem] tag]; // New pop-up menu selection
+    int othervalue = [self inputDeviceA];            // Pop-up selection of other port
     
     NSLog(@"portBAction (%d)", newvalue);
     
@@ -173,11 +166,8 @@
     [self setInputDeviceB:newvalue];
     
     // Unconnect old binding of selected port
-    if (oldvalue == IPD_JOYSTICK_1)
-        joystickManager->bindJoystick(1,NULL);
-    if (oldvalue == IPD_JOYSTICK_2)
-        joystickManager->bindJoystick(2,NULL);
-    
+    [c64 unbindJoysticksFromPortB];
+
     // Unconnect binding of other port as well if a double mapping occurs
     if (newvalue == othervalue) {
         NSLog(@"Selected USB joystick is already assigned. Removing binding.");
@@ -193,11 +183,11 @@
             break;
             
         case IPD_JOYSTICK_1:
-            joystickManager->bindJoystick(1,target);
+            [c64 bindJoystickToPortB:1];
             break;
             
         case IPD_JOYSTICK_2:
-            joystickManager->bindJoystick(2,target);
+            [c64 bindJoystickToPortB:2];
             break;
             
         default:
@@ -215,6 +205,11 @@
 - (IBAction)hardwareAction:(id)sender
 {
     [self showHardwareDialog];
+}
+
+- (IBAction)mediaAction:(id)sender
+{
+    [self showMediaDialog];
 }
 
 - (IBAction)debugOpenAction:(id)sender
